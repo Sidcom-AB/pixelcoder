@@ -20,13 +20,13 @@ He has:
 
 His journal reads like a real developer's internal monologue:
 
-> DAG 1 — Började bygga min pixel engine. 64x64 rutnät. Varje pixel har en själ.
-> DAG 4 — Hittade ett palette-set på lospec. 32 färger räcker för hela världar.
-> DAG 7 — Renderingen funkar! Men skuggorna är fel. Alltid skuggorna...
-> DAG 12 — Tre koppar kaffe innan lunch. Max var tre. Fjärde hände ändå.
-> DAG 15 — Fixen var en enda asterisk. En. Tre timmars debugging.
-> DAG 23 — Skärmen flimrade. Tror det var en glitch i verkligheten.
-> DAG 30 — Enginen lever. Pixlarna rör sig. De vet att jag tittar.
+> DAY 1 — Started building my pixel engine. 64x64 grid. Every pixel has a soul.
+> DAY 4 — Found a palette set on lospec. 32 colors is enough for entire worlds.
+> DAY 7 — Rendering works! But the shadows are wrong. Always the shadows...
+> DAY 12 — Three cups of coffee before lunch. Limit was three. Fourth happened anyway.
+> DAY 15 — The fix was a single asterisk. One. Three hours of debugging.
+> DAY 23 — Screen flickered. Think it was a glitch in reality.
+> DAY 30 — The engine lives. The pixels move. They know I'm watching.
 
 ## The Experience
 
@@ -40,10 +40,10 @@ A retro CRT monitor interface with:
 
 ### What Makes It Feel Alive
 
-- Sometimes nothing happens. "Sov till lunch. Scrollade lospec i 2h."
-- Sometimes he changes one color. "Bättre."
+- Sometimes nothing happens. "Slept till noon. Scrolled lospec for 2h."
+- Sometimes he changes one color. "Better."
 - Sometimes he has a manic episode and rewrites everything with three.js.
-- The next day he might revert it. "Okej... kanske inte three.js."
+- The next day he might revert it. "Okay... maybe not three.js."
 - Projects emerge, evolve, get abandoned, get revisited.
 - The journal reflects actual changes — if he built a house, he writes about the house.
 
