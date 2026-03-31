@@ -3,6 +3,38 @@ const { callClaude } = require('./claude');
 const { buildPrompt, buildFollowUpPrompt } = require('./prompts');
 
 const MAX_LARGE_STEPS = 3;
+const DAILY_TOKEN_BUDGET = parseInt(process.env.DAILY_TOKEN_BUDGET || '120000');
+
+/**
+ * Get today's token usage from cycle_logs.
+ */
+async function getTodayTokenUsage() {
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+
+  const [{ total }] = await db('cycle_logs')
+    .where('created_at', '>=', todayStart)
+    .sum('tokens_used as total');
+
+  return parseInt(total) || 0;
+}
+
+/**
+ * Calculate budget info for the prompt.
+ * Returns { used, budget, percent, energyLevel }
+ */
+async function getBudgetInfo() {
+  const used = await getTodayTokenUsage();
+  const percent = Math.round((used / DAILY_TOKEN_BUDGET) * 100);
+  let energyLevel;
+
+  if (percent < 40) energyLevel = 'full';
+  else if (percent < 70) energyLevel = 'good';
+  else if (percent < 90) energyLevel = 'low';
+  else energyLevel = 'exhausted';
+
+  return { used, budget: DAILY_TOKEN_BUDGET, percent, energyLevel };
+}
 
 function getDayNumber() {
   const start = new Date(process.env.START_DATE || '2026-04-01');
@@ -61,6 +93,9 @@ async function runCycle() {
 
   const current = await getCurrentContent();
   const recentJournal = await getRecentJournal();
+  const budget = await getBudgetInfo();
+
+  console.log(`[cycle] Budget: ${budget.percent}% used (${budget.used}/${budget.budget} tokens), energy: ${budget.energyLevel}`);
 
   const { system, user } = buildPrompt({
     dayNumber,
@@ -68,6 +103,8 @@ async function runCycle() {
     currentCss: current.css,
     currentJs: current.js,
     recentJournal,
+    energyLevel: budget.energyLevel,
+    budgetPercent: budget.percent,
   });
 
   let result;
@@ -108,8 +145,8 @@ async function runCycle() {
     return;
   }
 
-  // Multi-step for large actions
-  if (result.action_size === 'large') {
+  // Multi-step for large actions (skip if energy is exhausted)
+  if (result.action_size === 'large' && budget.energyLevel !== 'exhausted') {
     console.log('[cycle] Large action — entering multi-step mode');
     for (let step = 2; step <= MAX_LARGE_STEPS; step++) {
       try {

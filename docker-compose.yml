@@ -73,10 +73,11 @@ services:
       - DB_USER=${DB_USER:-postgres}
       - DB_PASSWORD=${DB_PASSWORD:-pixelcoder}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-      - CLAUDE_MODEL=${CLAUDE_MODEL:-claude-sonnet-4-20250514}
+      - CLAUDE_MODEL=${CLAUDE_MODEL:-claude-opus-4-6}
       - CYCLE_INTERVAL_HOURS=${CYCLE_INTERVAL_HOURS:-3}
       - START_DATE=${START_DATE:-2026-04-01}
       - CYCLE_LOGS_RETAIN_DAYS=${CYCLE_LOGS_RETAIN_DAYS:-90}
+      - DAILY_TOKEN_BUDGET=${DAILY_TOKEN_BUDGET:-120000}
       - NODE_ENV=${NODE_ENV:-production}
 
 volumes:

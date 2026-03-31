@@ -52,12 +52,13 @@ npm run migrate:rollback    # Rollback
 Copy `.env.example` to `.env` and fill in:
 
 - `ANTHROPIC_API_KEY` — Required. Claude API key.
-- `CLAUDE_MODEL` — Model to use (default: claude-sonnet-4-20250514)
+- `CLAUDE_MODEL` — Model to use (default: claude-opus-4-6)
 - `CYCLE_INTERVAL_HOURS` — Hours between cycles (default: 3)
 - `START_DATE` — Day 1 of the character's timeline
 - `API_SECRET` — Protects admin endpoints (cycle trigger, logs)
 - `DB_*` — PostgreSQL connection
 - `CYCLE_LOGS_RETAIN_DAYS` — Auto-cleanup for technical logs (default: 90)
+- `DAILY_TOKEN_BUDGET` — Soft daily token limit (default: 120000). Character adjusts behavior based on remaining budget.
 
 ## Key Concepts
 

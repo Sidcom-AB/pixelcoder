@@ -19,7 +19,9 @@ function buildPrompt(context) {
     .replace('{{current_html}}', context.currentHtml || '(tom — ingen kod ännu)')
     .replace('{{current_css}}', context.currentCss || '(ingen CSS)')
     .replace('{{current_js}}', context.currentJs || '(ingen JS)')
-    .replace('{{recent_journal}}', context.recentJournal || '(inga tidigare inlägg — detta är din första dag)');
+    .replace('{{recent_journal}}', context.recentJournal || '(inga tidigare inlägg — detta är din första dag)')
+    .replace('{{energy_level}}', context.energyLevel || 'full')
+    .replace('{{budget_percent}}', context.budgetPercent ?? 0);
 
   const fullSystem = [persona, system, rules, examples].join('\n\n---\n\n');
 
