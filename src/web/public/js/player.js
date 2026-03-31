@@ -1,12 +1,12 @@
-const IDLE_SRC = '/assets/Idle.mp4';
+const IDLE_SRC = '/assets/idle.mp4';
 const clips = [
-  { src: '/assets/Coding.mp4',       mood: 'CODING',      weight: 30 },
-  { src: '/assets/Inspecting.mp4',   mood: 'INSPECTING',  weight: 30 },
-  { src: '/assets/Aha.mp4',          mood: 'AHA!',        weight: 12 },
-  { src: '/assets/Sleepy.mp4',       mood: 'SLEEPY',      weight: 12 },
-  { src: '/assets/Coffee.mp4',       mood: 'COFFEE',      weight: 12 },
-  { src: '/assets/MatrixGlitch.mp4', mood: 'GLITCH',      weight: 4  },
-  { src: '/assets/MonitorLogo.mp4',  mood: 'LOGO',        weight: 4  },
+  { src: '/assets/coding.mp4',        mood: 'CODING',      weight: 30 },
+  { src: '/assets/inspecting.mp4',    mood: 'INSPECTING',  weight: 30 },
+  { src: '/assets/aha.mp4',           mood: 'AHA!',        weight: 12 },
+  { src: '/assets/sleepy.mp4',        mood: 'SLEEPY',      weight: 12 },
+  { src: '/assets/coffee.mp4',        mood: 'COFFEE',      weight: 12 },
+  { src: '/assets/matrix-glitch.mp4', mood: 'GLITCH',      weight: 4  },
+  { src: '/assets/monitor-logo.mp4',  mood: 'LOGO',        weight: 4  },
 ];
 
 const codeSnippets = {
