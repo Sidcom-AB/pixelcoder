@@ -12,6 +12,7 @@ app.use('/assets', express.static(path.join(__dirname, 'public/assets')));
 // API routes
 app.use('/api/revisions', require('./routes/revisions'));
 app.use('/api/journal', require('./routes/journal'));
+app.use('/api/store', require('./routes/store'));
 app.use('/api/cycle', require('./routes/admin'));
 
 // SSE
