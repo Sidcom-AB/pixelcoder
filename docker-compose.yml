@@ -1,0 +1,83 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-pixelcoder}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-pixelcoder}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  migrate:
+    build:
+      context: .
+      dockerfile: src/web/Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME:-pixelcoder}
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-pixelcoder}
+    command: npx knex migrate:latest
+    restart: "no"
+
+  web:
+    build:
+      context: .
+      dockerfile: src/web/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME:-pixelcoder}
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-pixelcoder}
+      - PORT=3000
+      - NODE_ENV=${NODE_ENV:-production}
+      - API_SECRET=${API_SECRET}
+      - START_DATE=${START_DATE:-2026-04-01}
+      - CYCLE_INTERVAL_HOURS=${CYCLE_INTERVAL_HOURS:-3}
+
+  worker:
+    build:
+      context: .
+      dockerfile: src/worker/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME:-pixelcoder}
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-pixelcoder}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - CLAUDE_MODEL=${CLAUDE_MODEL:-claude-sonnet-4-20250514}
+      - CYCLE_INTERVAL_HOURS=${CYCLE_INTERVAL_HOURS:-3}
+      - START_DATE=${START_DATE:-2026-04-01}
+      - CYCLE_LOGS_RETAIN_DAYS=${CYCLE_LOGS_RETAIN_DAYS:-90}
+      - NODE_ENV=${NODE_ENV:-production}
+
+volumes:
+  pgdata:
