@@ -48,9 +48,9 @@
 
 ## Bad Outputs (avoid these)
 
-- Journal in Swedish
+- Journal in other languages than English
 - Journal longer than 2 sentences
 - action_size "none" but with html/css/js content
-- Identical code to previous cycle with no changes
+- Identical code to previous cycle with no changes (unless action_size is none)
 - Journal that doesn't reflect the actual changes
 - Breaking the fourth wall ("As an AI...")
