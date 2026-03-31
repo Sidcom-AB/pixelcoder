@@ -1,0 +1,27 @@
+{
+  "name": "pixelcoder",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A living website with an autonomous pixel-art developer character",
+  "scripts": {
+    "dev:web": "cd src/web && npx nodemon server.js",
+    "dev:worker": "cd src/worker && npx nodemon worker.js",
+    "migrate": "npx knex migrate:latest",
+    "migrate:rollback": "npx knex migrate:rollback",
+    "migrate:make": "npx knex migrate:make",
+    "seed": "node scripts/seed.js",
+    "start:web": "node src/web/server.js",
+    "start:worker": "node src/worker/worker.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "express": "^4.21.0",
+    "knex": "^3.1.0",
+    "node-cron": "^3.0.3",
+    "pg": "^8.13.0",
+    "dotenv": "^16.4.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  }
+}
