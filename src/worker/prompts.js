@@ -14,24 +14,27 @@ function buildPrompt(context) {
   const rules = loadSoulFile('cycle-rules.md');
   const examples = loadSoulFile('examples.md');
 
+  // Inject persona into system prompt (single source of truth)
   let system = systemTemplate
+    .replace('{{persona}}', persona)
     .replace('{{day_number}}', context.dayNumber)
-    .replace('{{current_html}}', context.currentHtml || '(tom — ingen kod ännu)')
-    .replace('{{current_css}}', context.currentCss || '(ingen CSS)')
-    .replace('{{current_js}}', context.currentJs || '(ingen JS)')
-    .replace('{{recent_journal}}', context.recentJournal || '(inga tidigare inlägg — detta är din första dag)')
+    .replace('{{current_html}}', context.currentHtml || '(empty — no code yet)')
+    .replace('{{current_css}}', context.currentCss || '(no CSS)')
+    .replace('{{current_js}}', context.currentJs || '(no JS)')
+    .replace('{{recent_journal}}', context.recentJournal || '(no previous entries — this is your first day)')
     .replace('{{energy_level}}', context.energyLevel || 'full')
     .replace('{{budget_percent}}', context.budgetPercent ?? 0);
 
-  const fullSystem = [persona, system, rules, examples].join('\n\n---\n\n');
+  // Append rules and examples as separate sections
+  const fullSystem = [system, rules, examples].join('\n\n---\n\n');
 
-  const user = `Det är dag ${context.dayNumber}. Vad gör du idag?`;
+  const user = `It's day ${context.dayNumber}. What are you doing today?`;
 
   return { system: fullSystem, user };
 }
 
 function buildFollowUpPrompt(context) {
-  const user = `Bra start! Fortsätt bygga vidare. Här är ditt senaste steg:\n\n${context.previousStepResponse}\n\nFörfina och slutför. Svara med samma JSON-format.`;
+  const user = `Good start! Keep building on it. Here's your last step:\n\n${context.previousStepResponse}\n\nRefine and finish. Respond with the same JSON format.`;
   return { user };
 }
 
