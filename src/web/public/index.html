@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PixelCoder</title>
+<link rel="stylesheet" href="/css/frame.css">
+</head>
+<body>
+
+<div class="frame">
+  <div class="screw screw-tl"></div>
+  <div class="screw screw-tr"></div>
+  <div class="screw screw-bl"></div>
+  <div class="screw screw-br"></div>
+  <div class="power-led" id="powerLed"></div>
+
+  <!-- LEFT: CRT showing the Inner World -->
+  <div class="crt-side">
+    <div class="crt-vignette"></div>
+    <iframe
+      id="crtFrame"
+      class="crt-iframe"
+      sandbox="allow-scripts allow-same-origin"
+      title="Inner World"
+    ></iframe>
+  </div>
+
+  <!-- DIVIDER -->
+  <div class="divider"></div>
+
+  <!-- RIGHT: Workspace -->
+  <div class="work-side">
+    <!-- Pixel Calendar -->
+    <div class="calendar-widget" id="calendarWidget"></div>
+
+    <!-- Journal -->
+    <div class="diary-section" id="diary">
+      <div id="journalEntries"></div>
+    </div>
+
+    <!-- Code + Character -->
+    <div class="bottom-area">
+      <div class="code-box">
+        <div class="code-content" id="codeContent"></div>
+      </div>
+      <div class="character-area">
+        <button class="debug-btn" id="btnDebug">RND</button>
+        <video id="player" muted playsinline autoplay></video>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="/js/app.js"></script>
+</body>
+</html>
