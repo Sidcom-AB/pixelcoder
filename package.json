@@ -4,14 +4,15 @@
   "private": true,
   "description": "A living website with an autonomous pixel-art developer character",
   "scripts": {
-    "dev:web": "cd src/web && npx nodemon server.js",
-    "dev:worker": "cd src/worker && npx nodemon worker.js",
+    "dev:web": "npx nodemon src/web/server.js",
+    "dev:worker": "npx nodemon src/worker/worker.js",
+    "start:web": "node src/web/server.js",
+    "start:worker": "node src/worker/worker.js",
     "migrate": "npx knex migrate:latest",
     "migrate:rollback": "npx knex migrate:rollback",
     "migrate:make": "npx knex migrate:make",
     "seed": "node scripts/seed.js",
-    "start:web": "node src/web/server.js",
-    "start:worker": "node src/worker/worker.js"
+    "dev": "echo 'Run npm run dev:web and npm run dev:worker in separate terminals'"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
