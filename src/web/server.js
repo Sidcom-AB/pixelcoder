@@ -5,17 +5,18 @@ const path = require('path');
 const app = express();
 app.use(express.json());
 
-// Static files (frontend)
+// Static files
 app.use(express.static(path.join(__dirname, 'public')));
-
-// Static assets (mp4s, images)
 app.use('/assets', express.static(path.join(__dirname, 'public/assets')));
 
-// API routes (added in later tasks)
-// app.use('/api/revisions', require('./routes/revisions'));
-// app.use('/api/journal', require('./routes/journal'));
-// app.use('/api/events', require('./routes/events'));
-// app.use('/api/cycle', require('./routes/admin'));
+// API routes
+app.use('/api/revisions', require('./routes/revisions'));
+app.use('/api/journal', require('./routes/journal'));
+app.use('/api/cycle', require('./routes/admin'));
+
+// SSE
+const { router: eventsRouter, startListening } = require('./routes/events');
+app.use('/api/events', eventsRouter);
 
 // SPA fallback
 app.get('*', (req, res) => {
@@ -23,8 +24,13 @@ app.get('*', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`[web] PixelCoder running on http://localhost:${PORT}`);
+  try {
+    await startListening();
+  } catch (err) {
+    console.error('[web] Failed to start pg LISTEN — SSE will not work:', err.message);
+  }
 });
 
 module.exports = app;
