@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin - PixelCoder</title>
+  <link rel="stylesheet" href="/admin/admin.css">
+</head>
+<body>
+  <header class="admin-header">
+    <h1>PixelCoder Admin</h1>
+    <div id="workerStatus" class="worker-status"></div>
+  </header>
+
+  <nav class="tab-bar">
+    <button class="tab active" data-tab="dashboard">Dashboard</button>
+    <button class="tab" data-tab="logs">Logs</button>
+    <button class="tab" data-tab="revisions">Revisions</button>
+    <button class="tab" data-tab="tokens">Token Usage</button>
+    <button class="tab" data-tab="appstate">App State</button>
+    <button class="tab" data-tab="settings">Settings &amp; Actions</button>
+  </nav>
+
+  <main>
+    <!-- TAB 1: Dashboard -->
+    <section id="tab-dashboard" class="tab-content active">
+      <div class="stats-grid" id="statsGrid">
+        <!-- JS fills: stat cards for Current Day, Total Cycles, Revisions, Cycle Logs, Model -->
+      </div>
+
+      <div class="panel" id="budgetPanel">
+        <h2>Token Budget</h2>
+        <div class="progress-bar"><div class="progress-fill" id="budgetFill"></div></div>
+        <p id="budgetText" class="muted"></p>
+      </div>
+
+      <div class="panel" id="latestRevisionPanel">
+        <h2>Latest Revision</h2>
+        <table>
+          <thead><tr><th>ID</th><th>Day</th><th>Cycle</th><th>Mood</th><th>Action</th><th>Created</th></tr></thead>
+          <tbody id="latestRevisionBody"></tbody>
+        </table>
+      </div>
+
+      <div class="panel">
+        <h2>Quick Actions</h2>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <button class="btn" id="triggerCycleBtn">Trigger Cycle</button>
+          <span id="triggerStatus" class="muted"></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: Logs -->
+    <section id="tab-logs" class="tab-content">
+      <div class="filter-bar">
+        <input type="text" id="logSearch" placeholder="Search prompts & responses..." class="filter-input">
+        <label class="filter-label"><input type="checkbox" id="logErrorsOnly"> Errors only</label>
+        <button class="btn btn-sm" id="logSearchBtn">Search</button>
+      </div>
+      <div class="panel">
+        <table>
+          <thead><tr><th>ID</th><th>Rev</th><th>Step</th><th>Tokens</th><th>Duration</th><th>Time</th><th>Error</th><th></th></tr></thead>
+          <tbody id="logsBody"></tbody>
+        </table>
+        <div class="pagination" id="logsPagination"></div>
+      </div>
+    </section>
+
+    <!-- TAB 3: Revisions -->
+    <section id="tab-revisions" class="tab-content">
+      <div class="panel">
+        <table>
+          <thead><tr><th>ID</th><th>Day</th><th>Cycle</th><th>Mood</th><th>Action Size</th><th>Created</th></tr></thead>
+          <tbody id="revisionsBody"></tbody>
+        </table>
+        <div class="pagination" id="revisionsPagination"></div>
+      </div>
+      <div class="revision-preview" id="revisionPreview" style="display:none;">
+        <h2>Preview: Revision <span id="previewRevisionId"></span></h2>
+        <iframe id="revisionIframe" src="about:blank"></iframe>
+      </div>
+    </section>
+
+    <!-- TAB 4: Token Usage -->
+    <section id="tab-tokens" class="tab-content">
+      <div class="panel">
+        <h2>Budget Status</h2>
+        <div class="progress-bar"><div class="progress-fill" id="tokenBudgetFill"></div></div>
+        <p id="tokenBudgetText" class="muted"></p>
+      </div>
+      <div class="panel">
+        <h2>Total Tokens Used</h2>
+        <p id="totalTokens" style="font-size:24px; font-weight:600;"></p>
+      </div>
+      <div class="panel">
+        <h2>Daily Usage (Last 30 Days)</h2>
+        <table>
+          <thead><tr><th>Date</th><th>Tokens</th><th>Cycles</th></tr></thead>
+          <tbody id="tokenUsageBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- TAB 5: App State -->
+    <section id="tab-appstate" class="tab-content">
+      <div class="panel">
+        <h2>App State (all key/value pairs)</h2>
+        <table>
+          <thead><tr><th>Key</th><th>Value</th><th>Updated</th><th></th></tr></thead>
+          <tbody id="appStateBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- TAB 6: Settings & Actions -->
+    <section id="tab-settings" class="tab-content">
+      <div class="panel">
+        <h2>Settings</h2>
+        <div class="settings-grid">
+          <div class="form-group">
+            <label for="s_cycle_interval_hours">Cycle Interval (hours)</label>
+            <input type="number" id="s_cycle_interval_hours" min="1" max="24">
+          </div>
+          <div class="form-group">
+            <label for="s_daily_token_budget">Daily Token Budget</label>
+            <input type="number" id="s_daily_token_budget" min="1000" step="1000">
+          </div>
+          <div class="form-group">
+            <label for="s_cycle_logs_retain_days">Log Retain (days)</label>
+            <input type="number" id="s_cycle_logs_retain_days" min="1">
+          </div>
+          <div class="form-group">
+            <label for="s_start_date">Start Date</label>
+            <input type="date" id="s_start_date">
+          </div>
+        </div>
+        <div style="margin-top:16px; display:flex; gap:8px; align-items:center;">
+          <button class="btn" id="saveSettingsBtn">Save Settings</button>
+          <span id="settingsStatus" class="muted"></span>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Actions</h2>
+        <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+          <button class="btn" id="triggerCycleBtn2">Trigger Cycle</button>
+          <span id="triggerStatus2" class="muted"></span>
+          <div style="margin-left:auto; display:flex; gap:8px; align-items:center;">
+            <label>Clear logs older than <input type="number" id="clearLogsDays" value="90" min="1" style="width:60px;"> days</label>
+            <button class="btn btn-danger" id="clearLogsBtn">Clear Logs</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Worker Info</h2>
+        <div id="workerInfo">Loading...</div>
+      </div>
+    </section>
+  </main>
+
+  <script src="/admin/admin.js"></script>
+</body>
+</html>
