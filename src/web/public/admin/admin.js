@@ -1,0 +1,505 @@
+// ============================================================
+// Config
+// ============================================================
+const SECRET = document.cookie.match(/secret=([^;]+)/)?.[1] || '';
+const HEADERS = { 'x-api-secret': SECRET, 'Content-Type': 'application/json' };
+const REFRESH_MS = 15000;
+const EDITABLE_KEYS = ['cycle_interval_hours', 'daily_token_budget', 'cycle_logs_retain_days', 'start_date'];
+
+// ============================================================
+// Utility helpers
+// ============================================================
+
+function escapeHtml(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function formatDate(iso) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleString();
+}
+
+async function api(method, path, body) {
+  const opts = { method, headers: HEADERS };
+  if (body !== undefined) opts.body = JSON.stringify(body);
+  const res = await fetch(path, opts);
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || json.message || `HTTP ${res.status}`);
+  return json;
+}
+
+// ============================================================
+// Tab switching
+// ============================================================
+
+let dashboardInterval = null;
+const tabButtons = () => document.querySelectorAll('button.tab[data-tab]');
+const tabSections = () => document.querySelectorAll('.tab-content');
+
+function switchTab(tabName) {
+  tabButtons().forEach(b => b.classList.toggle('active', b.dataset.tab === tabName));
+  tabSections().forEach(s => s.classList.toggle('active', s.id === `tab-${tabName}`));
+  location.hash = tabName;
+
+  // Clear dashboard auto-refresh when leaving dashboard
+  if (dashboardInterval) {
+    clearInterval(dashboardInterval);
+    dashboardInterval = null;
+  }
+
+  // Load tab data
+  switch (tabName) {
+    case 'dashboard':
+      loadDashboard();
+      dashboardInterval = setInterval(loadDashboard, REFRESH_MS);
+      break;
+    case 'logs':
+      loadLogs();
+      break;
+    case 'revisions':
+      loadRevisions();
+      break;
+    case 'tokens':
+      loadTokenUsage();
+      break;
+    case 'appstate':
+      loadAppState();
+      break;
+    case 'settings':
+      loadSettings();
+      break;
+  }
+}
+
+// ============================================================
+// Dashboard
+// ============================================================
+
+async function loadDashboard() {
+  try {
+    const [statusRes, tokenRes, stateRes] = await Promise.all([
+      api('GET', '/api/cycle/status'),
+      api('GET', '/api/cycle/token-usage'),
+      api('GET', '/api/cycle/app-state'),
+    ]);
+
+    const status = statusRes.data;
+    const tokenData = tokenRes.data;
+    const stateRows = stateRes.data;
+
+    // Stat cards
+    const model = getStateValue(stateRows, 'claude_model') || 'claude-opus-4-6';
+    document.getElementById('statsGrid').innerHTML = `
+      <div class="stat-card"><div class="stat-value">${escapeHtml(status.current_day)}</div><div class="stat-label">Current Day</div></div>
+      <div class="stat-card"><div class="stat-value">${escapeHtml(status.total_cycles)}</div><div class="stat-label">Total Cycles</div></div>
+      <div class="stat-card"><div class="stat-value">${status.last_revision ? escapeHtml(status.last_revision.id) : '—'}</div><div class="stat-label">Latest Revision</div></div>
+      <div class="stat-card"><div class="stat-value mono">${escapeHtml(model)}</div><div class="stat-label">Model</div></div>
+    `;
+
+    // Latest revision
+    const rev = status.last_revision;
+    document.getElementById('latestRevisionBody').innerHTML = rev
+      ? `<tr>
+          <td class="mono">${escapeHtml(rev.id)}</td>
+          <td>${escapeHtml(rev.day_number)}</td>
+          <td>${escapeHtml(rev.cycle_number)}</td>
+          <td>${escapeHtml(rev.mood)}</td>
+          <td>${escapeHtml(rev.action_size)}</td>
+          <td>${formatDate(rev.created_at)}</td>
+        </tr>`
+      : '<tr><td colspan="6">No revisions yet</td></tr>';
+
+    // Token budget
+    const budget = Number(getStateValue(stateRows, 'daily_token_budget')) || 120000;
+    const today = new Date().toISOString().slice(0, 10);
+    const todayUsage = tokenData.daily?.find(d => d.date === today);
+    const usedToday = todayUsage ? todayUsage.tokens : 0;
+    const pct = Math.min(100, Math.round((usedToday / budget) * 100));
+    document.getElementById('budgetFill').style.width = `${pct}%`;
+    document.getElementById('budgetText').textContent =
+      `${usedToday.toLocaleString()} / ${budget.toLocaleString()} tokens today (${pct}%)`;
+
+    // Worker status
+    renderWorkerStatus(stateRows);
+
+  } catch (err) {
+    console.error('Dashboard load error:', err);
+  }
+}
+
+function getStateValue(rows, key) {
+  const row = rows.find(r => r.key === key);
+  return row ? row.value : null;
+}
+
+function renderWorkerStatus(stateRows) {
+  const raw = getStateValue(stateRows, 'worker_heartbeat');
+  const el = document.getElementById('workerStatus');
+  if (!raw) {
+    el.innerHTML = '<span class="dot dot-red"></span> Worker: no heartbeat';
+    return;
+  }
+  try {
+    const hb = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    const ago = (Date.now() - new Date(hb.timestamp).getTime()) / 1000;
+    let dotClass = 'dot-green';
+    if (ago > 120) dotClass = 'dot-red';
+    else if (ago > 60) dotClass = 'dot-yellow';
+    el.innerHTML = `<span class="dot ${dotClass}"></span> Worker: ${Math.round(ago)}s ago (interval: ${hb.interval || '?'})`;
+  } catch {
+    el.innerHTML = '<span class="dot dot-red"></span> Worker: invalid heartbeat';
+  }
+}
+
+// ============================================================
+// Logs
+// ============================================================
+
+let logsPage = 1;
+
+async function loadLogs(page = 1, search, errorsOnly) {
+  logsPage = page;
+  if (search === undefined) search = document.getElementById('logSearch').value;
+  if (errorsOnly === undefined) errorsOnly = document.getElementById('logErrorsOnly').checked;
+
+  const params = new URLSearchParams({ page, limit: 20 });
+  if (search) params.set('search', search);
+  if (errorsOnly) params.set('errors_only', 'true');
+
+  try {
+    const res = await api('GET', `/api/cycle/logs?${params}`);
+    const logs = res.data;
+    const meta = res.meta;
+
+    const tbody = document.getElementById('logsBody');
+    tbody.innerHTML = logs.map(log => `
+      <tr>
+        <td class="mono">${escapeHtml(log.id)}</td>
+        <td class="mono">${escapeHtml(log.revision_id)}</td>
+        <td>${escapeHtml(log.step_number)}</td>
+        <td class="mono">${log.tokens_used != null ? Number(log.tokens_used).toLocaleString() : '—'}</td>
+        <td class="mono">${log.duration_ms != null ? `${Number(log.duration_ms).toLocaleString()}ms` : '—'}</td>
+        <td>${formatDate(log.created_at)}</td>
+        <td>${log.error ? '<span class="dot dot-red" title="Error"></span>' : ''}</td>
+        <td><button class="btn btn-sm expand-btn" data-log-id="${log.id}">+</button></td>
+      </tr>
+      <tr class="log-detail-row" id="log-detail-${log.id}" style="display:none;">
+        <td colspan="8">
+          <div class="log-detail">
+            <h4>Prompt Sent</h4>
+            <pre class="mono">${escapeHtml(log.prompt_sent)}</pre>
+            <h4>Response</h4>
+            <pre class="mono">${escapeHtml(log.response_raw)}</pre>
+            ${log.error ? `<h4>Error</h4><pre class="mono" style="color:var(--danger);">${escapeHtml(log.error)}</pre>` : ''}
+          </div>
+        </td>
+      </tr>
+    `).join('');
+
+    // Expand/collapse handlers
+    tbody.querySelectorAll('.expand-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const detailRow = document.getElementById(`log-detail-${btn.dataset.logId}`);
+        const open = detailRow.style.display !== 'none';
+        detailRow.style.display = open ? 'none' : 'table-row';
+        btn.textContent = open ? '+' : '−';
+      });
+    });
+
+    // Pagination
+    renderPagination('logsPagination', meta, (p) => loadLogs(p));
+
+  } catch (err) {
+    console.error('Logs load error:', err);
+  }
+}
+
+// ============================================================
+// Revisions
+// ============================================================
+
+let revisionsPage = 1;
+
+async function loadRevisions(page = 1) {
+  revisionsPage = page;
+  try {
+    const res = await api('GET', `/api/cycle/revisions?page=${page}&limit=20`);
+    const revisions = res.data;
+    const meta = res.meta;
+
+    const tbody = document.getElementById('revisionsBody');
+    tbody.innerHTML = revisions.map(rev => `
+      <tr class="clickable-row" data-rev-id="${rev.id}">
+        <td class="mono">${escapeHtml(rev.id)}</td>
+        <td>${escapeHtml(rev.day_number)}</td>
+        <td>${escapeHtml(rev.cycle_number)}</td>
+        <td>${escapeHtml(rev.mood)}</td>
+        <td>${escapeHtml(rev.action_size)}</td>
+        <td>${formatDate(rev.created_at)}</td>
+      </tr>
+    `).join('');
+
+    // Row click -> preview
+    tbody.querySelectorAll('.clickable-row').forEach(row => {
+      row.addEventListener('click', () => {
+        const id = row.dataset.revId;
+        const preview = document.getElementById('revisionPreview');
+        preview.style.display = 'block';
+        document.getElementById('previewRevisionId').textContent = id;
+        document.getElementById('revisionIframe').src = `/render/${id}`;
+      });
+    });
+
+    renderPagination('revisionsPagination', meta, (p) => loadRevisions(p));
+
+  } catch (err) {
+    console.error('Revisions load error:', err);
+  }
+}
+
+// ============================================================
+// Token Usage
+// ============================================================
+
+async function loadTokenUsage() {
+  try {
+    const [tokenRes, stateRes] = await Promise.all([
+      api('GET', '/api/cycle/token-usage'),
+      api('GET', '/api/cycle/app-state'),
+    ]);
+
+    const tokenData = tokenRes.data;
+    const stateRows = stateRes.data;
+    const budget = Number(getStateValue(stateRows, 'daily_token_budget')) || 120000;
+
+    // Total tokens
+    document.getElementById('totalTokens').textContent =
+      (tokenData.total_tokens || 0).toLocaleString();
+
+    // Today's budget bar
+    const today = new Date().toISOString().slice(0, 10);
+    const todayUsage = tokenData.daily?.find(d => d.date === today);
+    const usedToday = todayUsage ? todayUsage.tokens : 0;
+    const pct = Math.min(100, Math.round((usedToday / budget) * 100));
+    document.getElementById('tokenBudgetFill').style.width = `${pct}%`;
+    document.getElementById('tokenBudgetText').textContent =
+      `${usedToday.toLocaleString()} / ${budget.toLocaleString()} tokens today (${pct}%)`;
+
+    // Daily table
+    document.getElementById('tokenUsageBody').innerHTML = (tokenData.daily || []).map(d => `
+      <tr>
+        <td>${escapeHtml(d.date)}</td>
+        <td class="mono">${Number(d.tokens).toLocaleString()}</td>
+        <td class="mono">${d.cycles}</td>
+      </tr>
+    `).join('');
+
+  } catch (err) {
+    console.error('Token usage load error:', err);
+  }
+}
+
+// ============================================================
+// App State
+// ============================================================
+
+async function loadAppState() {
+  try {
+    const res = await api('GET', '/api/cycle/app-state');
+    const rows = res.data;
+
+    document.getElementById('appStateBody').innerHTML = rows.map(row => {
+      const editable = EDITABLE_KEYS.includes(row.key);
+      const valueCell = editable
+        ? `<input type="text" class="filter-input" value="${escapeHtml(row.value)}" id="appstate-input-${escapeHtml(row.key)}" style="width:200px;">`
+        : `<span class="mono">${escapeHtml(row.value)}</span>`;
+      const actionCell = editable
+        ? `<button class="btn btn-sm appstate-save-btn" data-key="${escapeHtml(row.key)}">Save</button>`
+        : '';
+      return `
+        <tr>
+          <td class="mono">${escapeHtml(row.key)}</td>
+          <td>${valueCell}</td>
+          <td>${formatDate(row.updated_at)}</td>
+          <td>${actionCell}</td>
+        </tr>
+      `;
+    }).join('');
+
+    // Save handlers
+    document.querySelectorAll('.appstate-save-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const key = btn.dataset.key;
+        const input = document.getElementById(`appstate-input-${key}`);
+        const value = input.value;
+        try {
+          await api('PUT', '/api/cycle/settings', { [key]: value });
+          btn.textContent = 'Saved!';
+          setTimeout(() => { btn.textContent = 'Save'; }, 2000);
+        } catch (err) {
+          alert(`Error saving ${key}: ${err.message}`);
+        }
+      });
+    });
+
+  } catch (err) {
+    console.error('App state load error:', err);
+  }
+}
+
+// ============================================================
+// Settings & Actions
+// ============================================================
+
+async function loadSettings() {
+  try {
+    const [stateRes, statusRes] = await Promise.all([
+      api('GET', '/api/cycle/app-state'),
+      api('GET', '/api/cycle/status'),
+    ]);
+
+    const stateRows = stateRes.data;
+
+    // Populate form
+    const set = (id, key) => {
+      const el = document.getElementById(id);
+      const val = getStateValue(stateRows, key);
+      if (el && val != null) el.value = val;
+    };
+    set('s_cycle_interval_hours', 'cycle_interval_hours');
+    set('s_daily_token_budget', 'daily_token_budget');
+    set('s_cycle_logs_retain_days', 'cycle_logs_retain_days');
+    set('s_start_date', 'start_date');
+
+    // Worker info
+    const raw = getStateValue(stateRows, 'worker_heartbeat');
+    const workerInfo = document.getElementById('workerInfo');
+    if (!raw) {
+      workerInfo.textContent = 'No worker heartbeat detected.';
+    } else {
+      try {
+        const hb = typeof raw === 'string' ? JSON.parse(raw) : raw;
+        const ago = (Date.now() - new Date(hb.timestamp).getTime()) / 1000;
+        workerInfo.innerHTML = `
+          <p>Last heartbeat: <strong>${formatDate(hb.timestamp)}</strong> (${Math.round(ago)}s ago)</p>
+          <p>Interval: <strong>${hb.interval || '?'}</strong></p>
+          <p>Cycle interval: <strong>${statusRes.data.cycle_interval_hours}h</strong></p>
+          <p>Start date: <strong>${statusRes.data.start_date}</strong></p>
+        `;
+      } catch {
+        workerInfo.textContent = 'Invalid worker heartbeat data.';
+      }
+    }
+
+  } catch (err) {
+    console.error('Settings load error:', err);
+  }
+}
+
+async function saveSettings() {
+  const statusEl = document.getElementById('settingsStatus');
+  statusEl.textContent = 'Saving...';
+  try {
+    const body = {
+      cycle_interval_hours: Number(document.getElementById('s_cycle_interval_hours').value),
+      daily_token_budget: Number(document.getElementById('s_daily_token_budget').value),
+      cycle_logs_retain_days: Number(document.getElementById('s_cycle_logs_retain_days').value),
+      start_date: document.getElementById('s_start_date').value,
+    };
+    const res = await api('PUT', '/api/cycle/settings', body);
+    statusEl.textContent = res.changed?.length
+      ? `Saved: ${res.changed.join(', ')}`
+      : 'No changes detected.';
+    setTimeout(() => { statusEl.textContent = ''; }, 4000);
+  } catch (err) {
+    statusEl.textContent = `Error: ${err.message}`;
+  }
+}
+
+async function triggerCycle(statusElId) {
+  const statusEl = document.getElementById(statusElId);
+  statusEl.textContent = 'Triggering...';
+  try {
+    const res = await api('POST', '/api/cycle/trigger');
+    statusEl.textContent = res.message || 'Cycle triggered!';
+    setTimeout(() => { statusEl.textContent = ''; }, 5000);
+  } catch (err) {
+    statusEl.textContent = `Error: ${err.message}`;
+  }
+}
+
+async function clearLogs() {
+  const days = Number(document.getElementById('clearLogsDays').value);
+  if (!days || days < 1) return alert('Enter a valid number of days.');
+  if (!confirm(`Delete all logs older than ${days} days? This cannot be undone.`)) return;
+
+  try {
+    const res = await api('DELETE', `/api/cycle/logs?older_than_days=${days}`);
+    alert(`Deleted ${res.deleted || 0} log entries.`);
+  } catch (err) {
+    alert(`Error: ${err.message}`);
+  }
+}
+
+// ============================================================
+// Pagination helper
+// ============================================================
+
+function renderPagination(elementId, meta, loadFn) {
+  const el = document.getElementById(elementId);
+  if (!meta) { el.innerHTML = ''; return; }
+
+  const totalPages = Math.ceil(meta.total / meta.limit) || 1;
+  const page = meta.page;
+
+  el.innerHTML = `
+    <button class="btn btn-sm" ${page <= 1 ? 'disabled' : ''} id="${elementId}-prev">Prev</button>
+    <span class="muted">Page ${page} of ${totalPages}</span>
+    <button class="btn btn-sm" ${page >= totalPages ? 'disabled' : ''} id="${elementId}-next">Next</button>
+  `;
+
+  document.getElementById(`${elementId}-prev`)?.addEventListener('click', () => {
+    if (page > 1) loadFn(page - 1);
+  });
+  document.getElementById(`${elementId}-next`)?.addEventListener('click', () => {
+    if (page < totalPages) loadFn(page + 1);
+  });
+}
+
+// ============================================================
+// Init
+// ============================================================
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Tab click handlers
+  tabButtons().forEach(btn => {
+    btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+  });
+
+  // Log search
+  document.getElementById('logSearchBtn').addEventListener('click', () => loadLogs(1));
+  document.getElementById('logSearch').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') loadLogs(1);
+  });
+  document.getElementById('logErrorsOnly').addEventListener('change', () => loadLogs(1));
+
+  // Settings
+  document.getElementById('saveSettingsBtn').addEventListener('click', saveSettings);
+
+  // Trigger cycle buttons
+  document.getElementById('triggerCycleBtn').addEventListener('click', () => triggerCycle('triggerStatus'));
+  document.getElementById('triggerCycleBtn2').addEventListener('click', () => triggerCycle('triggerStatus2'));
+
+  // Clear logs
+  document.getElementById('clearLogsBtn').addEventListener('click', clearLogs);
+
+  // Restore tab from hash or default to dashboard
+  const hash = location.hash.replace('#', '');
+  const validTabs = ['dashboard', 'logs', 'revisions', 'tokens', 'appstate', 'settings'];
+  switchTab(validTabs.includes(hash) ? hash : 'dashboard');
+});
