@@ -40,6 +40,7 @@ router.get('/status', async (req, res) => {
         last_revision: lastRevision ? {
           id: lastRevision.id,
           day_number: lastRevision.day_number,
+          cycle_number: lastRevision.cycle_number,
           mood: lastRevision.mood,
           action_size: lastRevision.action_size,
           created_at: lastRevision.created_at,
@@ -139,7 +140,7 @@ router.delete('/logs', requireSecret, async (req, res) => {
   try {
     const days = Math.max(1, parseInt(req.query.older_than_days) || 90);
     const deleted = await db('cycle_logs')
-      .where('created_at', '<', db.raw(`NOW() - INTERVAL '${days} days'`))
+      .where('created_at', '<', db.raw(`NOW() - make_interval(days => ?)`, [days]))
       .del();
 
     res.json({ success: true, deleted });

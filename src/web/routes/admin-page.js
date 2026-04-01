@@ -6,7 +6,12 @@ router.get('/', (req, res) => {
   const secret = process.env.API_SECRET;
   if (!secret) return res.status(500).send('API_SECRET not configured');
 
-  const provided = req.query.secret || req.cookies?.secret;
+  // Parse cookie manually (no cookie-parser dependency)
+  const cookieSecret = req.headers.cookie
+    ?.split(';')
+    .map(c => c.trim().split('='))
+    .find(([k]) => k === 'secret')?.[1];
+  const provided = req.query.secret || cookieSecret;
   if (provided !== secret) {
     return res.send(loginPage());
   }
