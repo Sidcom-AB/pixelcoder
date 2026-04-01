@@ -57,9 +57,28 @@ router.get('/logs', requireSecret, async (req, res) => {
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 20));
     const offset = (page - 1) * limit;
+    const search = req.query.search || '';
+    const errorsOnly = req.query.errors_only === 'true';
 
-    const logs = await db('cycle_logs').orderBy('id', 'desc').limit(limit).offset(offset);
-    const [{ count }] = await db('cycle_logs').count('* as count');
+    let query = db('cycle_logs');
+    let countQuery = db('cycle_logs');
+
+    if (search) {
+      const filter = builder => {
+        builder.where('prompt_sent', 'ilike', `%${search}%`)
+               .orWhere('response_raw', 'ilike', `%${search}%`);
+      };
+      query = query.where(filter);
+      countQuery = countQuery.where(filter);
+    }
+
+    if (errorsOnly) {
+      query = query.whereNotNull('error').where('error', '!=', '');
+      countQuery = countQuery.whereNotNull('error').where('error', '!=', '');
+    }
+
+    const logs = await query.orderBy('id', 'desc').limit(limit).offset(offset);
+    const [{ count }] = await countQuery.count('* as count');
 
     res.json({ success: true, data: logs, meta: { page, limit, total: parseInt(count) } });
   } catch (err) {
@@ -68,7 +87,69 @@ router.get('/logs', requireSecret, async (req, res) => {
   }
 });
 
-const EDITABLE_SETTINGS = ['cycle_interval_hours', 'start_date', 'cycle_logs_retain_days', 'daily_token_budget'];
+router.get('/revisions', requireSecret, async (req, res) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 20));
+    const offset = (page - 1) * limit;
+
+    const revisions = await db('revisions').orderBy('id', 'desc').limit(limit).offset(offset);
+    const [{ count }] = await db('revisions').count('* as count');
+
+    res.json({ success: true, data: revisions, meta: { page, limit, total: parseInt(count) } });
+  } catch (err) {
+    console.error('[api] GET /cycle/revisions error:', err);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+router.get('/app-state', requireSecret, async (req, res) => {
+  try {
+    const rows = await db('app_state').select('*').orderBy('key');
+    res.json({ success: true, data: rows });
+  } catch (err) {
+    console.error('[api] GET /cycle/app-state error:', err);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+router.get('/token-usage', requireSecret, async (req, res) => {
+  try {
+    const usage = await db('cycle_logs')
+      .select(db.raw("DATE(created_at) as date"))
+      .sum('tokens_used as tokens')
+      .count('* as cycles')
+      .groupByRaw('DATE(created_at)')
+      .orderBy('date', 'desc')
+      .limit(30);
+
+    const totalRow = await db('cycle_logs').sum('tokens_used as total').first();
+
+    res.json({
+      success: true,
+      data: { daily: usage, total_tokens: parseInt(totalRow?.total || '0') }
+    });
+  } catch (err) {
+    console.error('[api] GET /cycle/token-usage error:', err);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+router.delete('/logs', requireSecret, async (req, res) => {
+  try {
+    const days = Math.max(1, parseInt(req.query.older_than_days) || 90);
+    const deleted = await db('cycle_logs')
+      .where('created_at', '<', db.raw(`NOW() - INTERVAL '${days} days'`))
+      .del();
+
+    res.json({ success: true, deleted });
+  } catch (err) {
+    console.error('[api] DELETE /cycle/logs error:', err);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+const EDITABLE_SETTINGS = ['cycle_interval_hours', 'start_date', 'cycle_logs_retain_days', 'daily_token_budget', 'claude_model'];
 
 router.put('/settings', requireSecret, async (req, res) => {
   try {
