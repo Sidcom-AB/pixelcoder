@@ -8,7 +8,7 @@ const MAX_QUERY_RESULTS = 100;
 
 // Simple in-memory rate limiter (per IP, resets hourly)
 const hits = new Map();
-const RATE_LIMIT = parseInt(process.env.STORE_RATE_LIMIT || '20');
+const RATE_LIMIT = parseInt(process.env.STORE_RATE_LIMIT || '500');
 
 function rateLimit(req, res, next) {
   const ip = req.ip;
@@ -42,11 +42,7 @@ router.get('/:key', async (req, res) => {
     const row = await db('kv_store').where('key', req.params.key).first();
     if (!row) return res.status(404).json({ success: false, error: 'Key not found' });
 
-    // Try to parse value as JSON, fall back to string
-    let value = row.value;
-    try { value = JSON.parse(value); } catch {}
-
-    res.json({ success: true, data: { key: row.key, value, updated_at: row.updated_at } });
+    res.json({ success: true, data: { key: row.key, value: row.value, updated_at: row.updated_at } });
   } catch (err) {
     console.error('[store] GET error:', err);
     res.status(500).json({ success: false, error: 'Internal server error' });
@@ -64,11 +60,7 @@ router.get('/', async (req, res) => {
       .orderBy('created_at', 'desc')
       .limit(MAX_QUERY_RESULTS);
 
-    const data = rows.map(r => {
-      let value = r.value;
-      try { value = JSON.parse(value); } catch {}
-      return { key: r.key, value, updated_at: r.updated_at };
-    });
+    const data = rows.map(r => ({ key: r.key, value: r.value, updated_at: r.updated_at }));
 
     res.json({ success: true, data });
   } catch (err) {

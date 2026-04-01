@@ -35,8 +35,8 @@ router.get('/status', async (req, res) => {
       data: {
         current_day: parseInt(state.current_day || '0'),
         total_cycles: parseInt(state.total_cycles || '0'),
-        start_date: process.env.START_DATE || '2026-04-01',
-        cycle_interval_hours: parseInt(process.env.CYCLE_INTERVAL_HOURS || '3'),
+        start_date: state.start_date || '2026-04-01',
+        cycle_interval_hours: parseInt(state.cycle_interval_hours || '3'),
         last_revision: lastRevision ? {
           id: lastRevision.id,
           day_number: lastRevision.day_number,
@@ -64,6 +64,32 @@ router.get('/logs', requireSecret, async (req, res) => {
     res.json({ success: true, data: logs, meta: { page, limit, total: parseInt(count) } });
   } catch (err) {
     console.error('[api] GET /cycle/logs error:', err);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+const EDITABLE_SETTINGS = ['cycle_interval_hours', 'start_date', 'cycle_logs_retain_days', 'daily_token_budget'];
+
+router.put('/settings', requireSecret, async (req, res) => {
+  try {
+    const updates = req.body;
+    const changed = [];
+
+    for (const [key, value] of Object.entries(updates)) {
+      if (!EDITABLE_SETTINGS.includes(key)) continue;
+
+      const exists = await db('app_state').where('key', key).first();
+      if (exists) {
+        await db('app_state').where('key', key).update({ value: String(value), updated_at: db.fn.now() });
+      } else {
+        await db('app_state').insert({ key, value: String(value), updated_at: db.fn.now() });
+      }
+      changed.push(key);
+    }
+
+    res.json({ success: true, changed });
+  } catch (err) {
+    console.error('[api] PUT /cycle/settings error:', err);
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });

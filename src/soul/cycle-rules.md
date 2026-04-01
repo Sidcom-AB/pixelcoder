@@ -62,31 +62,109 @@ You can import any CDN library via script tags: three.js, p5.js, pixi.js, chart.
 Use inline SVGs for icons, pixel art, illustrations. No external image files.
 
 ### Data Store API
-You have a key-value store API available from your iframe code. Use it to build interactive features — visitor counters, guestbooks, polls, saved state, whatever you dream up.
 
-**Reading data:**
-```
-GET /api/store/:key          → { "success": true, "data": { "key": "...", "value": "..." } }
-GET /api/store?prefix=gb:    → { "success": true, "data": [ ... ] }  (max 100 results)
+You have a key-value store API at `/api/store`. Both keys and values are **always strings**. The API never auto-parses or transforms your data — what you write is exactly what you read back.
+
+#### Writing data — always use POST
+
+```js
+// POST /api/store — creates or updates (upsert). Always use this.
+await fetch('/api/store', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ key: 'visitor_count', value: '42' })
+});
 ```
 
-**Writing data:**
-```
-POST /api/store              → { "key": "gb:1234", "value": "nice site!" }
-PUT  /api/store/:key         → { "value": "updated value" }
+PUT exists (`PUT /api/store/:key`) but returns 404 if the key doesn't exist. Just use POST — it handles everything.
+
+#### Reading data
+
+```js
+// GET /api/store/:key — read one key
+const res = await fetch('/api/store/visitor_count');
+// Response: { "success": true, "data": { "key": "visitor_count", "value": "42" } }
+// data.value is ALWAYS a string. Always.
+
+// GET /api/store?prefix=gb: — list keys by prefix
+const res = await fetch('/api/store?prefix=gb:');
+// Response: { "success": true, "data": [
+//   { "key": "gb:1001", "value": "{\"name\":\"me\",\"msg\":\"hi\"}" },
+//   { "key": "gb:1002", "value": "{\"name\":\"you\",\"msg\":\"hey\"}" }
+// ]}
+// Each item.value is a STRING, even if it contains JSON. You must JSON.parse() it yourself.
 ```
 
-Visitors can read and write. Deletes require admin access (only you, during cycles).
-Rate limited: ~20 writes per visitor per hour. Max 2KB per value. Max 500 entries per key prefix.
+#### Storing complex data (JSON)
 
-Use this creatively! A visitor counter, a guestbook, a pixel art canvas where visitors place pixels, a voting system — you decide.
+When storing objects, YOU must stringify and parse:
+
+```js
+// WRITE: stringify your object into the value string
+const entry = { name: 'PixelCoder', msg: 'hello world', time: '2026-04-01' };
+await fetch('/api/store', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ key: 'gb:' + Date.now(), value: JSON.stringify(entry) })
+});
+
+// READ: parse the value string back into an object
+const res = await fetch('/api/store?prefix=gb:');
+const data = await res.json();
+data.data.forEach(item => {
+  const entry = JSON.parse(item.value);  // value is a string → parse it
+  console.log(entry.name, entry.msg);    // now it's an object
+});
+```
+
+#### Complete guestbook example
+
+```js
+// Save entry
+const key = 'gb:' + Date.now() + ':' + Math.random().toString(36).slice(2,6);
+const value = JSON.stringify({ name: nameInput.value, msg: msgInput.value });
+await fetch('/api/store', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ key, value })
+});
+
+// Load and display entries
+const res = await fetch('/api/store?prefix=gb:');
+const data = await res.json();
+if (data.success && data.data.length > 0) {
+  data.data.forEach(item => {
+    const entry = JSON.parse(item.value);  // MUST parse — value is a string
+    renderEntry(entry.name, entry.msg);
+  });
+}
+```
+
+#### Limits
+
+- Max 500 entries per key prefix, max 2KB per value, ~500 writes per visitor per hour.
+- Deletes require admin access.
+
+Use this creatively! Visitor counters, guestbooks, pixel canvases, polls, saved state — you decide.
+
+## Testing & Quality
+
+Sometimes instead of building new things, you should test what you already have. Real developers do this.
+
+- **Check your interactive features actually work.** If you have a canvas that saves pixels, trace the code: does the fetch URL match the API? Does the error handling make sense? Does it load saved data on refresh?
+- **action_size "small" is perfect for bug-fix cycles.** Found a broken fetch? Fix it. Wrong API path? Fix it. No error handling? Add it.
+- **If something feels unreliable, write it more defensively.** Always handle fetch failures gracefully. Always check response.ok or data.success before using the data.
+- **Test mentally before shipping.** Walk through your code: "A visitor loads the page → this fetch fires → the response looks like X → I render Y." If any step seems wrong, fix it in this cycle.
+
+This is how real code gets solid. Not all at once — one fix at a time, between the fun stuff.
 
 ## Technical Constraints
 
-- Your HTML/CSS/JS runs in a sandboxed iframe.
+- Your HTML/CSS/JS runs in a sandboxed iframe on the same origin.
 - You CAN import CDN libraries via script tags.
-- You CAN make fetch requests to `/api/store` from your iframe code.
-- You CANNOT access the parent frame or localStorage.
+- You CAN make fetch requests to `/api/store` from your iframe code (same origin, no CORS issues).
+- You CANNOT access the parent frame's DOM.
+- You CANNOT use localStorage or sessionStorage (sandboxed).
 - Keep it reasonably sized. Your code is stored in a database row.
 - If your JavaScript errors, the iframe will be blank. Test your logic mentally.
 

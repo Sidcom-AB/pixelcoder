@@ -3,12 +3,14 @@ let currentPage = 1;
 let loading = false;
 let hasMore = true;
 let filterDay = null;
+const seenIds = new Set();
 
 function renderEntry(entry) {
   const div = document.createElement('div');
   div.className = 'diary-entry';
+  div.dataset.id = entry.id;
   div.innerHTML = `
-    <div class="diary-date">DAG ${entry.day_number}</div>
+    <div class="diary-date">DAY ${entry.day_number}</div>
     <div class="diary-text">${entry.journal_entry}</div>
   `;
   return div;
@@ -29,12 +31,14 @@ async function loadPage(page) {
     if (!data.success) return;
 
     const entries = data.data;
-    if (entries.length === 0) {
+    if (entries.length === 0 || (data.meta && !data.meta.has_more)) {
       hasMore = false;
-      return;
     }
+    if (entries.length === 0) return;
 
     entries.forEach(entry => {
+      if (seenIds.has(entry.id)) return;
+      seenIds.add(entry.id);
       container.appendChild(renderEntry(entry));
     });
 
@@ -45,6 +49,9 @@ async function loadPage(page) {
 }
 
 export function prependEntry(entry) {
+  if (seenIds.has(entry.id)) return;
+  seenIds.add(entry.id);
+
   const el = renderEntry(entry);
   el.style.opacity = '0';
   el.style.transform = 'translateY(-10px)';
@@ -60,6 +67,7 @@ export function prependEntry(entry) {
 export function filterByDay(day) {
   filterDay = day;
   container.innerHTML = '';
+  seenIds.clear();
   currentPage = 1;
   hasMore = true;
   loadPage(1);
@@ -68,6 +76,7 @@ export function filterByDay(day) {
 export function clearFilter() {
   filterDay = null;
   container.innerHTML = '';
+  seenIds.clear();
   currentPage = 1;
   hasMore = true;
   loadPage(1);
@@ -78,7 +87,8 @@ export function initJournal() {
 
   const section = document.getElementById('diary');
   section.addEventListener('scroll', () => {
-    if (section.scrollTop < 50 && !loading && hasMore) {
+    const { scrollTop, scrollHeight, clientHeight } = section;
+    if (scrollHeight - scrollTop - clientHeight < 50 && !loading && hasMore) {
       loadPage(currentPage + 1);
     }
   });

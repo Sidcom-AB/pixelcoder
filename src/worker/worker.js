@@ -1,24 +1,23 @@
 require('dotenv').config();
 const cron = require('node-cron');
 const db = require('../shared/db');
+const settings = require('../shared/settings');
 const { runCycle } = require('./cycle');
 
-const INTERVAL_HOURS = parseInt(process.env.CYCLE_INTERVAL_HOURS || '3');
-const RETAIN_DAYS = parseInt(process.env.CYCLE_LOGS_RETAIN_DAYS || '90');
-
-const cronExpression = `0 */${INTERVAL_HOURS} * * *`;
+let cronTask = null;
 
 async function cleanupOldLogs() {
   try {
+    const retainDays = parseInt(await settings.get('cycle_logs_retain_days'));
     const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - RETAIN_DAYS);
+    cutoff.setDate(cutoff.getDate() - retainDays);
 
     const deleted = await db('cycle_logs')
       .where('created_at', '<', cutoff)
       .del();
 
     if (deleted > 0) {
-      console.log(`[worker] Cleaned up ${deleted} old cycle logs`);
+      console.log(`[worker] Cleaned up ${deleted} old cycle logs (retain: ${retainDays} days)`);
     }
   } catch (err) {
     console.error('[worker] Log cleanup failed:', err.message);
@@ -39,10 +38,28 @@ async function checkManualTrigger() {
   return false;
 }
 
+async function scheduleCron() {
+  const intervalHours = parseInt(await settings.get('cycle_interval_hours'));
+  const cronExpression = `0 */${intervalHours} * * *`;
+
+  if (cronTask) {
+    cronTask.stop();
+  }
+
+  cronTask = cron.schedule(cronExpression, async () => {
+    console.log(`[worker] Cron triggered at ${new Date().toISOString()}`);
+    try {
+      await runCycle();
+    } catch (err) {
+      console.error('[worker] Cycle failed:', err);
+    }
+  });
+
+  console.log(`[worker] Cron scheduled: every ${intervalHours}h (${cronExpression})`);
+}
+
 async function main() {
   console.log(`[worker] PixelCoder worker starting`);
-  console.log(`[worker] Cycle interval: every ${INTERVAL_HOURS} hours (${cronExpression})`);
-  console.log(`[worker] Log retention: ${RETAIN_DAYS} days`);
 
   try {
     await db.raw('SELECT 1');
@@ -52,16 +69,33 @@ async function main() {
     process.exit(1);
   }
 
-  cron.schedule(cronExpression, async () => {
-    console.log(`[worker] Cron triggered at ${new Date().toISOString()}`);
-    try {
-      await runCycle();
-    } catch (err) {
-      console.error('[worker] Cycle failed:', err);
-    }
-  });
+  const allSettings = await settings.getAll();
+  console.log(`[worker] Settings:`, JSON.stringify(allSettings, null, 2));
 
+  await scheduleCron();
+
+  // Poll for manual triggers + re-read interval setting
+  let lastInterval = allSettings.cycle_interval_hours;
   setInterval(async () => {
+    // Check for setting changes
+    try {
+      const currentInterval = await settings.get('cycle_interval_hours');
+      if (currentInterval !== lastInterval) {
+        console.log(`[worker] Interval changed: ${lastInterval}h → ${currentInterval}h`);
+        lastInterval = currentInterval;
+        await scheduleCron();
+      }
+    } catch { /* ignore */ }
+
+    // Write heartbeat so admin knows the worker is alive and what it's running
+    try {
+      await settings.set('worker_heartbeat', JSON.stringify({
+        alive: true,
+        interval: lastInterval,
+        timestamp: new Date().toISOString(),
+      }));
+    } catch { /* ignore */ }
+
     const triggered = await checkManualTrigger();
     if (triggered) {
       try {

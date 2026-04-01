@@ -104,7 +104,9 @@ export function refreshCalendar() {
 
 export function initCalendar(startDateStr) {
   widget = document.getElementById('calendarWidget');
-  startDate = new Date(startDateStr);
+  // Parse as local date to avoid UTC offset issues
+  const [y, m, d] = startDateStr.split('-').map(Number);
+  startDate = new Date(y, m - 1, d);
   currentMonth = new Date();
   loadCalendarData();
 }

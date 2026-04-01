@@ -9,6 +9,12 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/assets', express.static(path.join(__dirname, 'public/assets')));
 
+// Render route (serves revision HTML directly for iframe src)
+app.use('/render', require('./routes/render'));
+
+// Admin page
+app.use('/admin', require('./routes/admin-page'));
+
 // API routes
 app.use('/api/revisions', require('./routes/revisions'));
 app.use('/api/journal', require('./routes/journal'));

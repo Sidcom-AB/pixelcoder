@@ -6,24 +6,11 @@ const crtFrame = document.getElementById('crtFrame');
 
 function renderInnerWorld(revision) {
   if (!revision) return;
-
-  const html = revision.html || '';
-  const css = revision.css || '';
-  const js = revision.js || '';
-
-  const doc = `<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<style>${css}</style>
-</head>
-<body>
-${html}
-<script>${js}<\/script>
-</body>
-</html>`;
-
-  crtFrame.srcdoc = doc;
+  if (revision.id) {
+    crtFrame.src = `/render/${revision.id}`;
+  } else {
+    crtFrame.src = '/render/latest';
+  }
 }
 
 async function boot() {
@@ -47,7 +34,6 @@ async function boot() {
     const res = await fetch('/api/revisions/latest');
     const data = await res.json();
     if (data.success && data.data) {
-      renderInnerWorld(data.data);
       if (data.data.mood) playMood(data.data.mood);
     }
   } catch (e) {

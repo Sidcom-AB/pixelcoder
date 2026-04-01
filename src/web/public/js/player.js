@@ -5,6 +5,7 @@ const clips = [
   { src: '/assets/aha.mp4',           mood: 'AHA!',        weight: 12 },
   { src: '/assets/sleepy.mp4',        mood: 'SLEEPY',      weight: 12 },
   { src: '/assets/coffee.mp4',        mood: 'COFFEE',      weight: 12 },
+  { src: '/assets/ecstatic.mp4',       mood: 'ECSTATIC',    weight: 10 },
   { src: '/assets/matrix-glitch.mp4', mood: 'GLITCH',      weight: 4  },
   { src: '/assets/monitor-logo.mp4',  mood: 'LOGO',        weight: 4  },
 ];
@@ -41,6 +42,11 @@ const codeSnippets = {
 <span class="ln">2</span><span class="kw">const</span> <span class="fn">limit</span> <span class="op">=</span> <span class="nr">3</span><span class="op">;</span> <span class="cm">// oops</span>
 <span class="ln">3</span><span class="kw">if</span> <span class="op">(</span><span class="fn">cups</span> <span class="op">></span> <span class="fn">limit</span><span class="op">)</span>
 <span class="ln">4</span>  <span class="fn">warn</span><span class="op">(</span><span class="st">'send help'</span><span class="op">);</span><span class="cursor-blink"></span>`,
+
+  ECSTATIC: `<span class="ln">1</span><span class="cm">// YES YES YES</span>
+<span class="ln">2</span><span class="fn">ship</span><span class="op">(</span><span class="st">'NOW'</span><span class="op">);</span>
+<span class="ln">3</span><span class="fn">celebrate</span><span class="op">();</span>
+<span class="ln">4</span><span class="cm">// it actually works!</span><span class="cursor-blink"></span>`,
 
   GLITCH: `<span class="ln">1</span><span class="cm">// R̸̨E̵A̶L̸I̶T̵Y̷ ̶E̸R̵R̶O̸R̵</span>
 <span class="ln">2</span><span class="fn">matrix</span><span class="op">.</span><span class="fn">stability</span> <span class="op">=</span> <span class="nr">0.02</span><span class="op">;</span>
