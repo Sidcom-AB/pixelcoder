@@ -16,22 +16,6 @@ services:
       timeout: 3s
       retries: 5
 
-  migrate:
-    build:
-      context: .
-      dockerfile: src/web/Dockerfile
-    depends_on:
-      db:
-        condition: service_healthy
-    environment:
-      - DB_HOST=db
-      - DB_PORT=5432
-      - DB_NAME=${DB_NAME:-pixelcoder}
-      - DB_USER=${DB_USER:-postgres}
-      - DB_PASSWORD=${DB_PASSWORD:-pixelcoder}
-    command: npx knex migrate:latest
-    restart: "no"
-
   web:
     build:
       context: .
@@ -40,8 +24,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      migrate:
-        condition: service_completed_successfully
+    command: sh -c "npx knex migrate:latest && npx knex seed:run && node src/web/server.js"
     ports:
       - "${PORT:-3000}:3000"
     environment:
@@ -53,6 +36,12 @@ services:
       - PORT=3000
       - NODE_ENV=${NODE_ENV:-production}
       - API_SECRET=${API_SECRET}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   worker:
     build:
@@ -60,10 +49,8 @@ services:
       dockerfile: src/worker/Dockerfile
     restart: unless-stopped
     depends_on:
-      db:
+      web:
         condition: service_healthy
-      migrate:
-        condition: service_completed_successfully
     environment:
       - DB_HOST=db
       - DB_PORT=5432

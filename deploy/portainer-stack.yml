@@ -1,10 +1,3 @@
-# Portainer Stack — PixelCoder
-# Deploy via Portainer > Stacks > Add Stack > Web editor
-# Set environment variables in Portainer's stack env section.
-#
-# Image references point to ghcr.io/sidcom-ab/pixelcoder-*
-# Built automatically by GitHub Actions on push to main/master.
-
 services:
   db:
     image: postgres:16-alpine
@@ -12,28 +5,16 @@ services:
     environment:
       POSTGRES_DB: ${DB_NAME:-pixelcoder}
       POSTGRES_USER: ${DB_USER:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in stack environment}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - /srv/storage/postgres:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
       interval: 5s
       timeout: 3s
       retries: 5
-
-  migrate:
-    image: ghcr.io/sidcom-ab/pixelcoder-web:latest
-    depends_on:
-      db:
-        condition: service_healthy
-    environment:
-      - DB_HOST=db
-      - DB_PORT=5432
-      - DB_NAME=${DB_NAME:-pixelcoder}
-      - DB_USER=${DB_USER:-postgres}
-      - DB_PASSWORD=${DB_PASSWORD}
-    command: npx knex migrate:latest
-    restart: "no"
+    networks:
+      - npm_network
 
   web:
     image: ghcr.io/sidcom-ab/pixelcoder-web:latest
@@ -41,36 +22,44 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      migrate:
-        condition: service_completed_successfully
-    ports:
-      - "${PORT:-3000}:3000"
+    command: sh -c "npx knex migrate:latest && npx knex seed:run && node src/web/server.js"
     environment:
-      - DB_HOST=db
-      - DB_PORT=5432
-      - DB_NAME=${DB_NAME:-pixelcoder}
-      - DB_USER=${DB_USER:-postgres}
-      - DB_PASSWORD=${DB_PASSWORD}
-      - PORT=3000
-      - NODE_ENV=production
-      - API_SECRET=${API_SECRET:?Set API_SECRET in stack environment}
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-pixelcoder}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD}
+      PORT: 3000
+      NODE_ENV: production
+      API_SECRET: ${API_SECRET:?Set API_SECRET in stack environment}
+    expose:
+      - "3000"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - npm_network
 
   worker:
     image: ghcr.io/sidcom-ab/pixelcoder-worker:latest
     restart: unless-stopped
     depends_on:
-      db:
+      web:
         condition: service_healthy
-      migrate:
-        condition: service_completed_successfully
     environment:
-      - DB_HOST=db
-      - DB_PORT=5432
-      - DB_NAME=${DB_NAME:-pixelcoder}
-      - DB_USER=${DB_USER:-postgres}
-      - DB_PASSWORD=${DB_PASSWORD}
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:?Set ANTHROPIC_API_KEY in stack environment}
-      - NODE_ENV=production
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-pixelcoder}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:?Set ANTHROPIC_API_KEY in stack environment}
+      NODE_ENV: production
+    networks:
+      - npm_network
 
-volumes:
-  pgdata:
+networks:
+  npm_network:
+    external: true
