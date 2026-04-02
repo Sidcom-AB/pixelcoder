@@ -54,8 +54,6 @@ services:
       - PORT=3000
       - NODE_ENV=production
       - API_SECRET=${API_SECRET:?Set API_SECRET in stack environment}
-      - START_DATE=${START_DATE:-2026-04-01}
-      - CYCLE_INTERVAL_HOURS=${CYCLE_INTERVAL_HOURS:-3}
 
   worker:
     image: ghcr.io/sidcom-ab/pixelcoder-worker:latest
@@ -72,11 +70,6 @@ services:
       - DB_USER=${DB_USER:-postgres}
       - DB_PASSWORD=${DB_PASSWORD}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:?Set ANTHROPIC_API_KEY in stack environment}
-      - CLAUDE_MODEL=${CLAUDE_MODEL:-claude-opus-4-6}
-      - CYCLE_INTERVAL_HOURS=${CYCLE_INTERVAL_HOURS:-3}
-      - START_DATE=${START_DATE:-2026-04-01}
-      - CYCLE_LOGS_RETAIN_DAYS=${CYCLE_LOGS_RETAIN_DAYS:-90}
-      - DAILY_TOKEN_BUDGET=${DAILY_TOKEN_BUDGET:-120000}
       - NODE_ENV=production
 
 volumes:

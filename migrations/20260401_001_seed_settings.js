@@ -3,6 +3,7 @@ const SETTINGS = [
   { key: 'start_date', value: '2026-04-01' },
   { key: 'cycle_logs_retain_days', value: '90' },
   { key: 'daily_token_budget', value: '120000' },
+  { key: 'claude_model', value: 'claude-opus-4-6' },
 ];
 
 exports.up = async function (knex) {

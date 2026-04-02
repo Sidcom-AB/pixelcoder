@@ -5,6 +5,7 @@ const DEFAULTS = {
   start_date: '2026-04-01',
   cycle_logs_retain_days: '90',
   daily_token_budget: '120000',
+  claude_model: 'claude-opus-4-6',
 };
 
 /**

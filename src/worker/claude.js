@@ -3,7 +3,8 @@ const Anthropic = require('@anthropic-ai/sdk');
 const client = new Anthropic();
 
 async function callClaude(systemPrompt, userMessage, options = {}) {
-  const model = options.model || process.env.CLAUDE_MODEL || 'claude-sonnet-4-20250514';
+  const settings = require('../shared/settings');
+  const model = options.model || await settings.get('claude_model');
   const maxTokens = options.maxTokens || 16384;
 
   const start = Date.now();
