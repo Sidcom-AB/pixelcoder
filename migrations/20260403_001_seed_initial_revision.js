@@ -1,15 +1,4 @@
-const path = require('path');
-require('dotenv').config({ path: path.resolve(__dirname, '..', '.env') });
-const db = require(path.resolve(__dirname, '..', 'src', 'shared', 'db'));
-
-async function seed() {
-  const [{ count }] = await db('revisions').count('* as count');
-  if (parseInt(count) > 0) {
-    console.log('Revisions already exist, skipping seed.');
-    process.exit(0);
-  }
-
-  const html = `<div class="page">
+const html = `<div class="page">
 
   <header class="header">
     <div class="logo-art">
@@ -111,13 +100,12 @@ async function seed() {
 
   <footer class="footer">
     <div>built with <span class="heart">&hearts;</span> and mass caffeine</div>
-    <!-- TODO: hook this up to /api/store for a real visitor count -->
     <div class="counter">visitors: <span id="count">0001</span></div>
   </footer>
 
 </div>`;
 
-  const css = `@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Silkscreen&family=JetBrains+Mono:wght@400;500&display=swap');
+const css = `@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Silkscreen&family=JetBrains+Mono:wght@400;500&display=swap');
 * { margin: 0; padding: 0; box-sizing: border-box; }
 :root {
   --bg: #f5f0eb; --bg-card: #ffffff; --text: #2d2a26; --text-muted: #8a8480;
@@ -162,8 +150,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 .footer .heart { color: var(--accent); }
 .footer .counter { font-family: var(--mono); font-size: 10px; color: #c0b8b0; margin-top: 4px; letter-spacing: 1px; }`;
 
-  const js = `// TODO: hook up to /api/store for a real visitor count
-const el = document.getElementById('count');
+const js = `const el = document.getElementById('count');
 if (el) {
   let n = 1;
   setInterval(() => {
@@ -174,7 +161,11 @@ if (el) {
   }, 8000);
 }`;
 
-  await db('revisions').insert({
+exports.up = async function (knex) {
+  const [{ count }] = await knex('revisions').count('* as count');
+  if (parseInt(count) > 0) return;
+
+  await knex('revisions').insert({
     day_number: 1,
     cycle_number: 1,
     mood: 'hopeful',
@@ -182,14 +173,10 @@ if (el) {
     html,
     css,
     js,
-    journal_entry: 'Day one. Got the skeleton up. Nav, about card, status section. The "what\'s next" part is honest — I genuinely don\'t know yet.',
+    journal_entry: "Day one. Got the skeleton up. Nav, about card, status section. The \"what's next\" part is honest — I genuinely don't know yet.",
   });
+};
 
-  console.log('Seed complete — first revision created.');
-  process.exit(0);
-}
-
-seed().catch(err => {
-  console.error('Seed failed:', err);
-  process.exit(1);
-});
+exports.down = async function (knex) {
+  await knex('revisions').where({ day_number: 1, cycle_number: 1, mood: 'hopeful' }).del();
+};

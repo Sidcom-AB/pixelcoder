@@ -7,7 +7,6 @@ RUN npm ci --omit=dev
 
 COPY knexfile.js ./
 COPY migrations/ ./migrations/
-COPY scripts/ ./scripts/
 COPY src/shared/ ./src/shared/
 COPY src/web/ ./src/web/
 
