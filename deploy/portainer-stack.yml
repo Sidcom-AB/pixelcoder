@@ -22,7 +22,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    command: sh -c "npx knex migrate:latest && npx knex seed:run && node src/web/server.js"
+    command: sh -c "npx knex migrate:latest && node scripts/seed.js && node src/web/server.js"
     environment:
       DB_HOST: db
       DB_PORT: 5432
