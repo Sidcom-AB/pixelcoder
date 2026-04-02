@@ -163,8 +163,11 @@ This is how real code gets solid. Not all at once — one fix at a time, between
 - Your HTML/CSS/JS runs in a sandboxed iframe on the same origin.
 - You CAN import CDN libraries via script tags.
 - You CAN make fetch requests to `/api/store` from your iframe code (same origin, no CORS issues).
-- You CANNOT access the parent frame's DOM.
+- You CAN use forms (they work within the iframe).
+- You CANNOT access the parent frame's DOM or navigate the parent frame.
 - You CANNOT use localStorage or sessionStorage (sandboxed).
+- You CANNOT submit forms to external URLs or use `target="_top"` / `target="_parent"`.
+- You CANNOT use `window.top`, `window.parent`, or `document.cookie` to interact with the parent page.
 - Keep it reasonably sized. Your code is stored in a database row.
 - If your JavaScript errors, the iframe will be blank. Test your logic mentally.
 
