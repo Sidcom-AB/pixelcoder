@@ -65,7 +65,7 @@ let player, codeEl, btnDebug;
 let idleTimer = null;
 let isIdle = true;
 let allLoaded = false;
-const preloaded = {};
+const blobUrls = {};
 let loadCount = 0;
 
 function weightedRandom() {
@@ -80,26 +80,28 @@ function setCode(mood) {
 }
 
 function preloadClips() {
-  clips.forEach(clip => {
-    const vid = document.createElement('video');
-    vid.preload = 'auto';
-    vid.muted = true;
-    vid.src = clip.src;
-    vid.addEventListener('canplaythrough', () => {
-      preloaded[clip.src] = vid;
-      loadCount++;
-      if (loadCount >= clips.length) {
-        allLoaded = true;
-        scheduleRandom();
-      }
-    }, { once: true });
-    vid.load();
+  const allSrcs = [IDLE_SRC, ...clips.map(c => c.src)];
+  allSrcs.forEach(src => {
+    fetch(src)
+      .then(r => r.blob())
+      .then(blob => {
+        blobUrls[src] = URL.createObjectURL(blob);
+        loadCount++;
+        if (loadCount >= allSrcs.length) {
+          allLoaded = true;
+          player.src = blobUrls[IDLE_SRC];
+          player.loop = true;
+          player.play();
+          scheduleRandom();
+        }
+      })
+      .catch(err => console.warn('[player] preload failed:', src, err));
   });
 }
 
 function playIdle() {
   isIdle = true;
-  player.src = IDLE_SRC;
+  player.src = blobUrls[IDLE_SRC] || IDLE_SRC;
   player.loop = true;
   player.play();
   setCode('IDLE');
@@ -111,7 +113,7 @@ function playClip(clip) {
   clearTimeout(idleTimer);
   isIdle = false;
   player.loop = false;
-  player.src = clip.src;
+  player.src = blobUrls[clip.src] || clip.src;
   player.play();
   setCode(clip.mood);
 }
