@@ -117,10 +117,10 @@ router.get('/app-state', requireSecret, async (req, res) => {
 router.get('/token-usage', requireSecret, async (req, res) => {
   try {
     const usage = await db('cycle_logs')
-      .select(db.raw("DATE(created_at) as date"))
+      .select(db.raw("to_char(created_at AT TIME ZONE 'Europe/Stockholm', 'YYYY-MM-DD') as date"))
       .sum('tokens_used as tokens')
       .count('* as cycles')
-      .groupByRaw('DATE(created_at)')
+      .groupByRaw("to_char(created_at AT TIME ZONE 'Europe/Stockholm', 'YYYY-MM-DD')")
       .orderBy('date', 'desc')
       .limit(30);
 

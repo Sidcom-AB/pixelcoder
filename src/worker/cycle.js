@@ -1,13 +1,9 @@
 const db = require('../shared/db');
 const settings = require('../shared/settings');
-const { callClaude } = require('./claude');
-const { buildPrompt, buildFollowUpPrompt } = require('./prompts');
+const { callClaudeWithTools } = require('./claude');
+const { toolDefinitions, executeTool } = require('./tools');
+const { buildPrompt } = require('./prompts');
 
-const MAX_LARGE_STEPS = 3;
-
-/**
- * Get today's token usage from cycle_logs.
- */
 async function getTodayTokenUsage() {
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
@@ -19,10 +15,6 @@ async function getTodayTokenUsage() {
   return parseInt(total) || 0;
 }
 
-/**
- * Calculate budget info for the prompt.
- * Returns { used, budget, percent, energyLevel }
- */
 async function getBudgetInfo() {
   const used = await getTodayTokenUsage();
   const budget = parseInt(await settings.get('daily_token_budget'));
@@ -47,17 +39,14 @@ async function getDayNumber() {
   return Math.max(1, Math.floor(diff / (1000 * 60 * 60 * 24)) + 1);
 }
 
-async function getCurrentContent() {
-  const rev = await db('revisions')
-    .whereNotNull('html')
-    .orderBy('id', 'desc')
-    .first();
-
-  return {
-    html: rev?.html || null,
-    css: rev?.css || null,
-    js: rev?.js || null,
-  };
+async function getWorkspaceManifest() {
+  return db('workspace_files')
+    .select(
+      'filename',
+      db.raw("length(content) as chars"),
+      db.raw("array_length(string_to_array(content, E'\\n'), 1) as lines")
+    )
+    .orderBy('filename');
 }
 
 async function getRecentJournal(limit = 8) {
@@ -70,7 +59,7 @@ async function getRecentJournal(limit = 8) {
 
   return entries
     .reverse()
-    .map(e => `DAG ${e.day_number} [${e.mood || '?'}, ${e.action_size || '?'}]: ${e.journal_entry}`)
+    .map(e => `DAY ${e.day_number} [${e.mood || '?'}, ${e.action_size || '?'}]: ${e.journal_entry}`)
     .join('\n');
 }
 
@@ -86,39 +75,23 @@ async function updateAppState(dayNumber) {
   await db.raw(`UPDATE app_state SET value = (value::int + 1)::text, updated_at = NOW() WHERE key = 'total_cycles'`);
 }
 
-async function saveErrorRevision(dayNumber, cycleNumber, logs, journalEntry) {
-  const revision = await db('revisions').insert({
-    day_number: dayNumber,
-    cycle_number: cycleNumber,
-    mood: 'error',
-    action_size: 'none',
-    journal_entry: journalEntry,
-  }).returning('id');
-
-  const revId = revision[0].id || revision[0];
-  for (const log of logs) {
-    await db('cycle_logs').insert({ revision_id: revId, ...log });
-  }
-
-  await updateAppState(dayNumber);
-  console.log(`[cycle] Error cycle saved, state updated.`);
+async function snapshotWorkspace(revisionId) {
+  await db.raw(`
+    INSERT INTO revision_files (revision_id, filename, content)
+    SELECT ?, filename, content FROM workspace_files
+  `, [revisionId]);
 }
 
 function parseResponse(text) {
   let cleaned = text.trim();
-
-  // Strip markdown code blocks if present
   if (cleaned.startsWith('```')) {
     cleaned = cleaned.replace(/^```(?:json)?\s*\n?/, '').replace(/\n?\s*```\s*$/, '');
   }
-
-  // Find JSON object boundaries if there's text around it
   const firstBrace = cleaned.indexOf('{');
   const lastBrace = cleaned.lastIndexOf('}');
   if (firstBrace !== -1 && lastBrace > firstBrace) {
     cleaned = cleaned.substring(firstBrace, lastBrace + 1);
   }
-
   return JSON.parse(cleaned);
 }
 
@@ -128,186 +101,104 @@ async function runCycle() {
 
   console.log(`[cycle] Starting cycle — Day ${dayNumber}, Cycle ${cycleNumber}`);
 
-  const current = await getCurrentContent();
+  const fileManifest = await getWorkspaceManifest();
   const recentJournal = await getRecentJournal();
   const budget = await getBudgetInfo();
 
   console.log(`[cycle] Budget: ${budget.percent}% used (${budget.used}/${budget.budget} tokens), energy: ${budget.energyLevel}`);
+  console.log(`[cycle] Workspace: ${fileManifest.length} files`);
+
+  // Create revision FIRST so we have an ID to log against immediately
+  const revision = await db('revisions').insert({
+    day_number: dayNumber,
+    cycle_number: cycleNumber,
+    mood: 'in_progress',
+    action_size: 'none',
+    journal_entry: 'Cycle in progress...',
+    uses_filesystem: true,
+  }).returning('*');
+
+  const rev = revision[0];
+  console.log(`[cycle] Created revision #${rev.id} (in_progress)`);
 
   const { system, user } = buildPrompt({
     dayNumber,
-    currentHtml: current.html,
-    currentCss: current.css,
-    currentJs: current.js,
+    fileManifest,
     recentJournal,
     energyLevel: budget.energyLevel,
     budgetPercent: budget.percent,
   });
 
-  let result;
-  const logs = [];
+  // Log each turn to DB immediately as it happens
+  const onTurn = async (logEntry) => {
+    await db('cycle_logs').insert({ revision_id: rev.id, ...logEntry });
+  };
 
-  // Step 1: Call Claude
+  // Run the tool-use conversation
   let response;
   try {
-    response = await callClaude(system, user);
-    logs.push({
-      step_number: 1,
-      prompt_sent: `SYSTEM:\n${system}\n\nUSER:\n${user}`,
-      response_raw: response.content,
-      tokens_used: response.usage.input_tokens + response.usage.output_tokens,
-      duration_ms: response.durationMs,
-    });
+    response = await callClaudeWithTools(system, user, toolDefinitions, executeTool, { onTurn });
   } catch (err) {
-    console.error('[cycle] Claude API call failed:', err.message);
-    logs.push({
-      step_number: 1,
-      prompt_sent: `SYSTEM:\n${system}\n\nUSER:\n${user}`,
-      response_raw: null,
-      error: err.message,
+    console.error('[cycle] Claude conversation failed:', err.message);
+    await db('cycle_logs').insert({ revision_id: rev.id, step_number: 0, error: err.message });
+    await db('revisions').where('id', rev.id).update({
+      mood: 'error',
+      journal_entry: 'Something broke. Screen just... flickered.',
     });
-    await saveErrorRevision(dayNumber, cycleNumber, logs, 'Something broke. Screen just... flickered.');
+    await updateAppState(dayNumber);
     return;
   }
 
-  // Step 2: Parse — with truncation handling and repair retry
-  if (response.stopReason === 'max_tokens') {
-    // Response was truncated — ask for shorter version
-    console.warn('[cycle] Response truncated — requesting shorter version');
-    logs[logs.length - 1].error = 'Truncated (max_tokens)';
-    result = await retryWithPrompt(
-      system,
-      'Your previous response was too long and got cut off. Please try again with SHORTER code. Simplify your HTML/CSS/JS — fewer elements, less code. Keep it minimal but complete. Respond with ONLY the valid JSON object.',
-      logs
-    );
-  } else {
-    // Try parsing, repair if needed
-    try {
-      result = parseResponse(response.content);
-    } catch (parseErr) {
-      console.warn('[cycle] Parse failed, attempting repair:', parseErr.message);
-      logs[logs.length - 1].error = 'Parse error: ' + parseErr.message;
-      result = await retryWithPrompt(
-        system,
-        `Your previous response could not be parsed as JSON.\n\nError: ${parseErr.message}\n\nHere is what you wrote (first 2000 chars):\n${response.content.substring(0, 2000)}\n\nPlease respond with ONLY the valid JSON object. No markdown, no explanation. Just the JSON with keys: mood, action_size, journal, html, css, js.`,
-        logs
-      );
-    }
-  }
+  console.log(`[cycle] Conversation done — ${response.totalTokens} tokens`);
 
-  if (!result) {
-    await saveErrorRevision(dayNumber, cycleNumber, logs, 'Brain spit out something unreadable. Trying again next time.');
+  // Parse the final text response (mood + journal JSON)
+  let result;
+  try {
+    result = parseResponse(response.text);
+  } catch (err) {
+    console.error('[cycle] Failed to parse final response:', err.message);
+    console.error('[cycle] Raw text:', response.text?.substring(0, 500));
+    await db('cycle_logs').insert({ revision_id: rev.id, step_number: 0, error: 'Parse error: ' + err.message });
+    await db('revisions').where('id', rev.id).update({
+      mood: 'error',
+      journal_entry: 'Brain spit out something unreadable. Trying again next time.',
+    });
+    await updateAppState(dayNumber);
     return;
   }
 
-  // Step 3: Multi-step for large actions (skip if energy is exhausted)
-  if (result.action_size === 'large' && budget.energyLevel !== 'exhausted') {
-    console.log('[cycle] Large action — entering multi-step mode');
-    for (let step = 2; step <= MAX_LARGE_STEPS; step++) {
-      try {
-        const { user: followUp } = buildFollowUpPrompt({
-          dayNumber,
-          previousStepResponse: JSON.stringify(result),
-        });
-
-        const stepResponse = await callClaude(system, followUp);
-        logs.push({
-          step_number: step,
-          prompt_sent: followUp,
-          response_raw: stepResponse.content,
-          tokens_used: stepResponse.usage.input_tokens + stepResponse.usage.output_tokens,
-          duration_ms: stepResponse.durationMs,
-        });
-
-        if (stepResponse.stopReason === 'max_tokens') {
-          console.warn(`[cycle] Multi-step ${step} truncated, stopping`);
-          logs[logs.length - 1].error = 'Truncated (max_tokens)';
-          break;
-        }
-
-        const stepResult = parseResponse(stepResponse.content);
-        if (stepResult.html) result.html = stepResult.html;
-        if (stepResult.css) result.css = stepResult.css;
-        if (stepResult.js) result.js = stepResult.js;
-        if (stepResult.journal) result.journal = stepResult.journal;
-        if (stepResult.mood) result.mood = stepResult.mood;
-      } catch (err) {
-        console.error(`[cycle] Multi-step ${step} failed:`, err.message);
-        logs.push({ step_number: step, error: err.message });
-        break;
-      }
-    }
-  }
-
-  // Step 4: Save revision
-  const revision = await db('revisions').insert({
-    day_number: dayNumber,
-    cycle_number: cycleNumber,
+  // Update revision with final result
+  await db('revisions').where('id', rev.id).update({
     mood: result.mood || 'unknown',
     action_size: result.action_size || 'none',
-    html: result.html || null,
-    css: result.css || null,
-    js: result.js || null,
     journal_entry: result.journal || 'No comment.',
-  }).returning('*');
+  });
 
-  const rev = revision[0];
-  console.log(`[cycle] Saved revision #${rev.id} — mood: ${rev.mood}, action: ${rev.action_size}`);
+  console.log(`[cycle] Updated revision #${rev.id} — mood: ${result.mood}, action: ${result.action_size}`);
 
-  for (const log of logs) {
-    await db('cycle_logs').insert({ revision_id: rev.id, ...log });
-  }
+  // Snapshot workspace files
+  await snapshotWorkspace(rev.id);
+  const snapCount = await db('revision_files').where('revision_id', rev.id).count('* as count').first();
+  console.log(`[cycle] Snapshotted ${snapCount.count} files`);
 
-  // Notify connected clients (metadata only — pg_notify has 8KB limit)
+  // Notify connected clients
   try {
     const payload = JSON.stringify({
       id: rev.id,
-      day_number: rev.day_number,
-      cycle_number: rev.cycle_number,
-      mood: rev.mood,
-      action_size: rev.action_size,
-      journal_entry: rev.journal_entry,
+      day_number: dayNumber,
+      cycle_number: cycleNumber,
+      mood: result.mood,
+      action_size: result.action_size,
+      journal_entry: result.journal,
       created_at: rev.created_at,
     });
     await db.raw("SELECT pg_notify('new_revision', ?)", [payload]);
   } catch (notifyErr) {
     console.warn('[cycle] pg_notify failed (non-fatal):', notifyErr.message);
   }
-  console.log(`[cycle] Notified new_revision`);
 
   await updateAppState(dayNumber);
   console.log(`[cycle] Cycle complete.`);
-}
-
-/**
- * Retry a failed response by sending a new prompt to Claude.
- * Returns parsed result or null if retry also fails.
- */
-async function retryWithPrompt(system, retryPrompt, logs) {
-  try {
-    const retryResponse = await callClaude(system, retryPrompt);
-    logs.push({
-      step_number: 1,
-      prompt_sent: retryPrompt,
-      response_raw: retryResponse.content,
-      tokens_used: retryResponse.usage.input_tokens + retryResponse.usage.output_tokens,
-      duration_ms: retryResponse.durationMs,
-    });
-
-    if (retryResponse.stopReason === 'max_tokens') {
-      console.error('[cycle] Retry also truncated');
-      logs[logs.length - 1].error = 'Still truncated after retry';
-      return null;
-    }
-
-    const result = parseResponse(retryResponse.content);
-    console.log('[cycle] Retry succeeded');
-    return result;
-  } catch (err) {
-    console.error('[cycle] Retry failed:', err.message);
-    logs.push({ step_number: 1, error: 'Retry failed: ' + err.message });
-    return null;
-  }
 }
 
 module.exports = { runCycle, getDayNumber };

@@ -6,6 +6,29 @@ const HEADERS = { 'x-api-secret': SECRET, 'Content-Type': 'application/json' };
 const REFRESH_MS = 15000;
 const EDITABLE_KEYS = ['cycle_interval_hours', 'daily_token_budget', 'cycle_logs_retain_days', 'start_date'];
 
+// Claude pricing per million tokens (USD) — from claude.ai/pricing 2026-04
+const MODEL_PRICING = {
+  'claude-opus-4-6':          { input: 5,    output: 25   },
+  'claude-sonnet-4-6':        { input: 3,    output: 15   },
+  'claude-haiku-4-5-20251001':{ input: 1,    output: 5    },
+};
+
+/**
+ * Estimate cost for a given token count.
+ * Assumes ~60% input, ~40% output ratio (typical for tool-use cycles).
+ */
+function estimateCost(tokens, model) {
+  const pricing = MODEL_PRICING[model] || MODEL_PRICING['claude-opus-4-6'];
+  const inputTokens = tokens * 0.6;
+  const outputTokens = tokens * 0.4;
+  return (inputTokens * pricing.input + outputTokens * pricing.output) / 1_000_000;
+}
+
+function formatUSD(amount) {
+  if (amount < 0.01) return '<$0.01';
+  return '$' + amount.toFixed(2);
+}
+
 // ============================================================
 // Utility helpers
 // ============================================================
@@ -22,6 +45,15 @@ function escapeHtml(str) {
 function formatDate(iso) {
   if (!iso) return '—';
   return new Date(iso).toLocaleString();
+}
+
+function formatDuration(ms) {
+  if (ms == null) return '—';
+  const sec = Math.round(ms / 1000);
+  if (sec < 60) return `${sec}s`;
+  const min = Math.floor(sec / 60);
+  const rem = sec % 60;
+  return rem > 0 ? `${min}m ${rem}s` : `${min}m`;
 }
 
 async function api(method, path, body) {
@@ -183,7 +215,7 @@ async function loadLogs(page = 1, search, errorsOnly) {
         <td class="mono">${escapeHtml(log.revision_id)}</td>
         <td>${escapeHtml(log.step_number)}</td>
         <td class="mono">${log.tokens_used != null ? Number(log.tokens_used).toLocaleString() : '—'}</td>
-        <td class="mono">${log.duration_ms != null ? `${Number(log.duration_ms).toLocaleString()}ms` : '—'}</td>
+        <td class="mono">${formatDuration(log.duration_ms)}</td>
         <td>${formatDate(log.created_at)}</td>
         <td>${log.error ? '<span class="dot dot-red" title="Error"></span>' : ''}</td>
         <td><button class="btn btn-sm expand-btn" data-log-id="${log.id}">+</button></td>
@@ -276,28 +308,46 @@ async function loadTokenUsage() {
     const tokenData = tokenRes.data;
     const stateRows = stateRes.data;
     const budget = Number(getStateValue(stateRows, 'daily_token_budget')) || 120000;
-
-    // Total tokens
-    document.getElementById('totalTokens').textContent =
-      (tokenData.total_tokens || 0).toLocaleString();
+    const model = getStateValue(stateRows, 'claude_model') || 'claude-opus-4-6';
+    const totalTokens = tokenData.total_tokens || 0;
 
     // Today's budget bar
     const today = new Date().toISOString().slice(0, 10);
     const todayUsage = tokenData.daily?.find(d => d.date === today);
-    const usedToday = todayUsage ? todayUsage.tokens : 0;
+    const usedToday = todayUsage ? Number(todayUsage.tokens) : 0;
     const pct = Math.min(100, Math.round((usedToday / budget) * 100));
     document.getElementById('tokenBudgetFill').style.width = `${pct}%`;
     document.getElementById('tokenBudgetText').textContent =
       `${usedToday.toLocaleString()} / ${budget.toLocaleString()} tokens today (${pct}%)`;
 
-    // Daily table
-    document.getElementById('tokenUsageBody').innerHTML = (tokenData.daily || []).map(d => `
+    // Cost estimates
+    const totalCost = estimateCost(totalTokens, model);
+    const todayCost = estimateCost(usedToday, model);
+    const dailyBudgetCost = estimateCost(budget, model);
+    const monthlyCost = dailyBudgetCost * 30;
+    const pricing = MODEL_PRICING[model] || MODEL_PRICING['claude-opus-4-6'];
+
+    document.getElementById('costEstimate').innerHTML = `
+      <div class="stat-card"><div class="stat-value">${totalTokens.toLocaleString()}</div><div class="stat-label">Total Tokens Used</div></div>
+      <div class="stat-card"><div class="stat-value">${formatUSD(totalCost)}</div><div class="stat-label">Total Cost</div></div>
+      <div class="stat-card"><div class="stat-value">${formatUSD(todayCost)}</div><div class="stat-label">Today's Cost</div></div>
+      <div class="stat-card"><div class="stat-value">${formatUSD(monthlyCost)}</div><div class="stat-label">Est. Monthly (at budget)</div></div>
+      <div class="stat-card"><div class="stat-value mono">${escapeHtml(model)}</div><div class="stat-label">Model</div></div>
+      <div class="stat-card"><div class="stat-value mono">$${pricing.input} / $${pricing.output}</div><div class="stat-label">Price (in/out per MTok)</div></div>
+    `;
+
+    // Daily table with cost column
+    document.getElementById('tokenUsageBody').innerHTML = (tokenData.daily || []).map(d => {
+      const tokens = Number(d.tokens);
+      const cost = estimateCost(tokens, model);
+      return `
       <tr>
         <td>${escapeHtml(d.date)}</td>
-        <td class="mono">${Number(d.tokens).toLocaleString()}</td>
+        <td class="mono">${tokens.toLocaleString()}</td>
         <td class="mono">${d.cycles}</td>
-      </tr>
-    `).join('');
+        <td class="mono">${formatUSD(cost)}</td>
+      </tr>`;
+    }).join('');
 
   } catch (err) {
     console.error('Token usage load error:', err);
@@ -375,6 +425,7 @@ async function loadSettings() {
     set('s_daily_token_budget', 'daily_token_budget');
     set('s_cycle_logs_retain_days', 'cycle_logs_retain_days');
     set('s_start_date', 'start_date');
+    set('s_claude_model', 'claude_model');
 
     // Worker info
     const raw = getStateValue(stateRows, 'worker_heartbeat');
@@ -410,6 +461,7 @@ async function saveSettings() {
       daily_token_budget: Number(document.getElementById('s_daily_token_budget').value),
       cycle_logs_retain_days: Number(document.getElementById('s_cycle_logs_retain_days').value),
       start_date: document.getElementById('s_start_date').value,
+      claude_model: document.getElementById('s_claude_model').value,
     };
     const res = await api('PUT', '/api/cycle/settings', body);
     statusEl.textContent = res.changed?.length
