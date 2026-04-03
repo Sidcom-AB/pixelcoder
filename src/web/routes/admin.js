@@ -136,6 +136,40 @@ router.get('/token-usage', requireSecret, async (req, res) => {
   }
 });
 
+router.post('/refuel', requireSecret, async (req, res) => {
+  try {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const [{ total }] = await db('cycle_logs')
+      .where('created_at', '>=', todayStart)
+      .sum('tokens_used as total');
+
+    const usedToday = parseInt(total) || 0;
+    if (usedToday <= 0) {
+      return res.json({ success: true, message: 'Budget already full, nothing to refuel.' });
+    }
+
+    // Credit back 70% of today's usage
+    const credit = -Math.round(usedToday * 0.7);
+
+    await db('cycle_logs').insert({
+      revision_id: null,
+      step_number: 0,
+      prompt_sent: null,
+      response_raw: 'Budget refuel (admin)',
+      tokens_used: credit,
+      duration_ms: 0,
+      error: null,
+    });
+
+    res.json({ success: true, message: `Refueled ${(-credit).toLocaleString()} tokens.` });
+  } catch (err) {
+    console.error('[api] POST /cycle/refuel error:', err);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
 router.delete('/logs', requireSecret, async (req, res) => {
   try {
     const days = Math.max(1, parseInt(req.query.older_than_days) || 90);

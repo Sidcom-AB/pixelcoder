@@ -547,6 +547,15 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('triggerCycleBtn').addEventListener('click', () => triggerCycle('triggerStatus'));
   document.getElementById('triggerCycleBtn2').addEventListener('click', () => triggerCycle('triggerStatus2'));
 
+  // Refuel
+  document.getElementById('refuelBtn').addEventListener('click', async () => {
+    if (!confirm('Restore 70% of today\'s token budget?')) return;
+    const res = await api('POST', '/api/cycle/refuel');
+    alert(res.message || 'Refueled!');
+    loadTokenUsage();
+    loadDashboard();
+  });
+
   // Clear logs
   document.getElementById('clearLogsBtn').addEventListener('click', clearLogs);
 
