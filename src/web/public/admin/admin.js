@@ -4,7 +4,17 @@
 const SECRET = document.cookie.match(/secret=([^;]+)/)?.[1] || '';
 const HEADERS = { 'x-api-secret': SECRET, 'Content-Type': 'application/json' };
 const REFRESH_MS = 15000;
-const EDITABLE_KEYS = ['cycle_interval_hours', 'daily_token_budget', 'cycle_logs_retain_days', 'start_date'];
+const EDITABLE_KEYS = {
+  cycle_interval_hours:   { type: 'number', min: 1, max: 24, label: 'Cycle Interval (hours)' },
+  daily_token_budget:     { type: 'number', min: 1000, step: 1000, label: 'Daily Token Budget' },
+  cycle_logs_retain_days: { type: 'number', min: 1, label: 'Log Retain (days)' },
+  start_date:             { type: 'date', label: 'Start Date' },
+  claude_model:           { type: 'select', label: 'Claude Model', options: [
+    { value: 'claude-opus-4-6', text: 'claude-opus-4-6' },
+    { value: 'claude-sonnet-4-6', text: 'claude-sonnet-4-6' },
+    { value: 'claude-haiku-4-5-20251001', text: 'claude-haiku-4-5' },
+  ]},
+};
 
 // Claude pricing per million tokens (USD) — from claude.ai/pricing 2026-04
 const MODEL_PRICING = {
@@ -101,9 +111,6 @@ function switchTab(tabName) {
       break;
     case 'appstate':
       loadAppState();
-      break;
-    case 'settings':
-      loadSettings();
       break;
   }
 }
@@ -358,77 +365,46 @@ async function loadTokenUsage() {
 // App State
 // ============================================================
 
-async function loadAppState() {
-  try {
-    const res = await api('GET', '/api/cycle/app-state');
-    const rows = res.data;
-
-    document.getElementById('appStateBody').innerHTML = rows.map(row => {
-      const editable = EDITABLE_KEYS.includes(row.key);
-      const valueCell = editable
-        ? `<input type="text" class="filter-input" value="${escapeHtml(row.value)}" id="appstate-input-${escapeHtml(row.key)}" style="width:200px;">`
-        : `<span class="mono">${escapeHtml(row.value)}</span>`;
-      const actionCell = editable
-        ? `<button class="btn btn-sm appstate-save-btn" data-key="${escapeHtml(row.key)}">Save</button>`
-        : '';
-      return `
-        <tr>
-          <td class="mono">${escapeHtml(row.key)}</td>
-          <td>${valueCell}</td>
-          <td>${formatDate(row.updated_at)}</td>
-          <td>${actionCell}</td>
-        </tr>
-      `;
-    }).join('');
-
-    // Save handlers
-    document.querySelectorAll('.appstate-save-btn').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const key = btn.dataset.key;
-        const input = document.getElementById(`appstate-input-${key}`);
-        const value = input.value;
-        try {
-          await api('PUT', '/api/cycle/settings', { [key]: value });
-          btn.textContent = 'Saved!';
-          setTimeout(() => { btn.textContent = 'Save'; }, 2000);
-        } catch (err) {
-          alert(`Error saving ${key}: ${err.message}`);
-        }
-      });
-    });
-
-  } catch (err) {
-    console.error('App state load error:', err);
+function renderEditableInput(key, cfg, value) {
+  const id = `appstate-input-${key}`;
+  if (cfg.type === 'select') {
+    const opts = cfg.options.map(o =>
+      `<option value="${escapeHtml(o.value)}"${o.value === value ? ' selected' : ''}>${escapeHtml(o.text)}</option>`
+    ).join('');
+    return `<select id="${id}" class="filter-input" style="width:220px;">${opts}</select>`;
   }
+  const attrs = [`type="${cfg.type}"`, `id="${id}"`, 'class="filter-input"', 'style="width:220px;"'];
+  if (value != null) attrs.push(`value="${escapeHtml(value)}"`);
+  if (cfg.min != null) attrs.push(`min="${cfg.min}"`);
+  if (cfg.max != null) attrs.push(`max="${cfg.max}"`);
+  if (cfg.step != null) attrs.push(`step="${cfg.step}"`);
+  return `<input ${attrs.join(' ')}>`;
 }
 
-// ============================================================
-// Settings & Actions
-// ============================================================
-
-async function loadSettings() {
+async function loadAppState() {
   try {
     const [stateRes, statusRes] = await Promise.all([
       api('GET', '/api/cycle/app-state'),
       api('GET', '/api/cycle/status'),
     ]);
+    const rows = stateRes.data;
 
-    const stateRows = stateRes.data;
-
-    // Populate form
-    const set = (id, key) => {
-      const el = document.getElementById(id);
-      const val = getStateValue(stateRows, key);
-      if (el && val != null) el.value = val;
-    };
-    set('s_cycle_interval_hours', 'cycle_interval_hours');
-    set('s_daily_token_budget', 'daily_token_budget');
-    set('s_cycle_logs_retain_days', 'cycle_logs_retain_days');
-    set('s_start_date', 'start_date');
-    set('s_claude_model', 'claude_model');
+    document.getElementById('appStateBody').innerHTML = rows.map(row => {
+      const cfg = EDITABLE_KEYS[row.key];
+      const valueCell = cfg
+        ? renderEditableInput(row.key, cfg, row.value)
+        : `<span class="mono">${escapeHtml(row.value)}</span>`;
+      return `
+        <tr>
+          <td class="mono">${escapeHtml(row.key)}</td>
+          <td>${valueCell}</td>
+          <td>${formatDate(row.updated_at)}</td>
+        </tr>
+      `;
+    }).join('');
 
     // Worker info
-    const raw = getStateValue(stateRows, 'worker_heartbeat');
+    const raw = getStateValue(rows, 'worker_heartbeat');
     const workerInfo = document.getElementById('workerInfo');
     if (!raw) {
       workerInfo.textContent = 'No worker heartbeat detected.';
@@ -448,21 +424,25 @@ async function loadSettings() {
     }
 
   } catch (err) {
-    console.error('Settings load error:', err);
+    console.error('App state load error:', err);
   }
 }
+
+// ============================================================
+// Settings & Actions
+// ============================================================
 
 async function saveSettings() {
   const statusEl = document.getElementById('settingsStatus');
   statusEl.textContent = 'Saving...';
   try {
-    const body = {
-      cycle_interval_hours: Number(document.getElementById('s_cycle_interval_hours').value),
-      daily_token_budget: Number(document.getElementById('s_daily_token_budget').value),
-      cycle_logs_retain_days: Number(document.getElementById('s_cycle_logs_retain_days').value),
-      start_date: document.getElementById('s_start_date').value,
-      claude_model: document.getElementById('s_claude_model').value,
-    };
+    const body = {};
+    for (const key of Object.keys(EDITABLE_KEYS)) {
+      const el = document.getElementById(`appstate-input-${key}`);
+      if (!el) continue;
+      const cfg = EDITABLE_KEYS[key];
+      body[key] = cfg.type === 'number' ? Number(el.value) : el.value;
+    }
     const res = await api('PUT', '/api/cycle/settings', body);
     statusEl.textContent = res.changed?.length
       ? `Saved: ${res.changed.join(', ')}`
@@ -561,6 +541,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Restore tab from hash or default to dashboard
   const hash = location.hash.replace('#', '');
-  const validTabs = ['dashboard', 'logs', 'revisions', 'tokens', 'appstate', 'settings'];
+  const validTabs = ['dashboard', 'logs', 'revisions', 'tokens', 'appstate'];
   switchTab(validTabs.includes(hash) ? hash : 'dashboard');
 });
