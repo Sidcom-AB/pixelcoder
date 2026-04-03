@@ -106,8 +106,8 @@ function switchTab(tabName) {
     case 'revisions':
       loadRevisions();
       break;
-    case 'tokens':
-      loadTokenUsage();
+    case 'journal':
+      loadJournal();
       break;
     case 'appstate':
       loadAppState();
@@ -165,6 +165,36 @@ async function loadDashboard() {
 
     // Worker status
     renderWorkerStatus(stateRows);
+
+    // Cost estimates
+    const totalTokens = tokenData.total_tokens || 0;
+    const totalCost = estimateCost(totalTokens, model);
+    const todayCost = estimateCost(usedToday, model);
+    const dailyBudgetCost = estimateCost(budget, model);
+    const monthlyCost = dailyBudgetCost * 30;
+    const pricing = MODEL_PRICING[model] || MODEL_PRICING['claude-opus-4-6'];
+
+    document.getElementById('costEstimate').innerHTML = `
+      <div class="stat-card"><div class="stat-value">${totalTokens.toLocaleString()}</div><div class="stat-label">Total Tokens Used</div></div>
+      <div class="stat-card"><div class="stat-value">${formatUSD(totalCost)}</div><div class="stat-label">Total Cost</div></div>
+      <div class="stat-card"><div class="stat-value">${formatUSD(todayCost)}</div><div class="stat-label">Today's Cost</div></div>
+      <div class="stat-card"><div class="stat-value">${formatUSD(monthlyCost)}</div><div class="stat-label">Est. Monthly (at budget)</div></div>
+      <div class="stat-card"><div class="stat-value mono">${escapeHtml(model)}</div><div class="stat-label">Model</div></div>
+      <div class="stat-card"><div class="stat-value mono">$${pricing.input} / $${pricing.output}</div><div class="stat-label">Price (in/out per MTok)</div></div>
+    `;
+
+    // Daily usage table
+    document.getElementById('tokenUsageBody').innerHTML = (tokenData.daily || []).map(d => {
+      const tokens = Number(d.tokens);
+      const cost = estimateCost(tokens, model);
+      return `
+      <tr>
+        <td>${escapeHtml(d.date)}</td>
+        <td class="mono">${tokens.toLocaleString()}</td>
+        <td class="mono">${d.cycles}</td>
+        <td class="mono">${formatUSD(cost)}</td>
+      </tr>`;
+    }).join('');
 
   } catch (err) {
     console.error('Dashboard load error:', err);
@@ -302,62 +332,81 @@ async function loadRevisions(page = 1) {
 }
 
 // ============================================================
-// Token Usage
+// Journal
 // ============================================================
 
-async function loadTokenUsage() {
+let journalPage = 1;
+
+async function loadJournal(page = 1) {
+  journalPage = page;
   try {
-    const [tokenRes, stateRes] = await Promise.all([
-      api('GET', '/api/cycle/token-usage'),
-      api('GET', '/api/cycle/app-state'),
-    ]);
+    const res = await api('GET', `/api/cycle/revisions?page=${page}&limit=20`);
+    const revisions = res.data;
+    const meta = res.meta;
 
-    const tokenData = tokenRes.data;
-    const stateRows = stateRes.data;
-    const budget = Number(getStateValue(stateRows, 'daily_token_budget')) || 120000;
-    const model = getStateValue(stateRows, 'claude_model') || 'claude-opus-4-6';
-    const totalTokens = tokenData.total_tokens || 0;
-
-    // Today's budget bar
-    const today = new Date().toISOString().slice(0, 10);
-    const todayUsage = tokenData.daily?.find(d => d.date === today);
-    const usedToday = todayUsage ? Number(todayUsage.tokens) : 0;
-    const pct = Math.min(100, Math.round((usedToday / budget) * 100));
-    document.getElementById('tokenBudgetFill').style.width = `${pct}%`;
-    document.getElementById('tokenBudgetText').textContent =
-      `${usedToday.toLocaleString()} / ${budget.toLocaleString()} tokens today (${pct}%)`;
-
-    // Cost estimates
-    const totalCost = estimateCost(totalTokens, model);
-    const todayCost = estimateCost(usedToday, model);
-    const dailyBudgetCost = estimateCost(budget, model);
-    const monthlyCost = dailyBudgetCost * 30;
-    const pricing = MODEL_PRICING[model] || MODEL_PRICING['claude-opus-4-6'];
-
-    document.getElementById('costEstimate').innerHTML = `
-      <div class="stat-card"><div class="stat-value">${totalTokens.toLocaleString()}</div><div class="stat-label">Total Tokens Used</div></div>
-      <div class="stat-card"><div class="stat-value">${formatUSD(totalCost)}</div><div class="stat-label">Total Cost</div></div>
-      <div class="stat-card"><div class="stat-value">${formatUSD(todayCost)}</div><div class="stat-label">Today's Cost</div></div>
-      <div class="stat-card"><div class="stat-value">${formatUSD(monthlyCost)}</div><div class="stat-label">Est. Monthly (at budget)</div></div>
-      <div class="stat-card"><div class="stat-value mono">${escapeHtml(model)}</div><div class="stat-label">Model</div></div>
-      <div class="stat-card"><div class="stat-value mono">$${pricing.input} / $${pricing.output}</div><div class="stat-label">Price (in/out per MTok)</div></div>
-    `;
-
-    // Daily table with cost column
-    document.getElementById('tokenUsageBody').innerHTML = (tokenData.daily || []).map(d => {
-      const tokens = Number(d.tokens);
-      const cost = estimateCost(tokens, model);
+    const tbody = document.getElementById('journalBody');
+    tbody.innerHTML = revisions.map(rev => {
+      const entry = rev.journal_entry || '';
+      const truncated = entry.length > 120 ? entry.slice(0, 120) + '...' : entry;
       return `
       <tr>
-        <td>${escapeHtml(d.date)}</td>
-        <td class="mono">${tokens.toLocaleString()}</td>
-        <td class="mono">${d.cycles}</td>
-        <td class="mono">${formatUSD(cost)}</td>
+        <td class="mono">${escapeHtml(rev.id)}</td>
+        <td>${escapeHtml(rev.day_number)}</td>
+        <td>${escapeHtml(rev.cycle_number)}</td>
+        <td>${escapeHtml(rev.mood)}</td>
+        <td>
+          <span class="journal-text" id="journal-text-${rev.id}">${escapeHtml(truncated)}</span>
+          <textarea class="journal-edit filter-input" id="journal-edit-${rev.id}" style="display:none; width:100%; min-height:60px;">${escapeHtml(entry)}</textarea>
+        </td>
+        <td>${formatDate(rev.created_at)}</td>
+        <td style="white-space:nowrap;">
+          <button class="btn btn-sm journal-edit-btn" data-id="${rev.id}">Edit</button>
+          <button class="btn btn-sm btn-danger journal-del-btn" data-id="${rev.id}">Del</button>
+        </td>
       </tr>`;
     }).join('');
 
+    // Edit handlers
+    tbody.querySelectorAll('.journal-edit-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        const textEl = document.getElementById(`journal-text-${id}`);
+        const editEl = document.getElementById(`journal-edit-${id}`);
+
+        if (btn.textContent === 'Edit') {
+          textEl.style.display = 'none';
+          editEl.style.display = 'block';
+          btn.textContent = 'Save';
+        } else {
+          try {
+            await api('PUT', `/api/cycle/revisions/${id}/journal`, { journal_entry: editEl.value });
+            btn.textContent = 'Edit';
+            loadJournal(journalPage);
+          } catch (err) {
+            alert(`Error saving: ${err.message}`);
+          }
+        }
+      });
+    });
+
+    // Delete handlers
+    tbody.querySelectorAll('.journal-del-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        if (!confirm(`Delete revision ${id} and its journal entry? This cannot be undone.`)) return;
+        try {
+          await api('DELETE', `/api/cycle/revisions/${id}`);
+          loadJournal(journalPage);
+        } catch (err) {
+          alert(`Error deleting: ${err.message}`);
+        }
+      });
+    });
+
+    renderPagination('journalPagination', meta, (p) => loadJournal(p));
+
   } catch (err) {
-    console.error('Token usage load error:', err);
+    console.error('Journal load error:', err);
   }
 }
 
@@ -532,7 +581,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!confirm('Restore 70% of today\'s token budget?')) return;
     const res = await api('POST', '/api/cycle/refuel');
     alert(res.message || 'Refueled!');
-    loadTokenUsage();
     loadDashboard();
   });
 
@@ -541,6 +589,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Restore tab from hash or default to dashboard
   const hash = location.hash.replace('#', '');
-  const validTabs = ['dashboard', 'logs', 'revisions', 'tokens', 'appstate'];
+  const validTabs = ['dashboard', 'logs', 'revisions', 'journal', 'appstate'];
   switchTab(validTabs.includes(hash) ? hash : 'dashboard');
 });

@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PixelCoder — Responsive Mock</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ===== MOBILE TOP BAR (hidden on desktop) ===== -->
+<div class="mobile-topbar">
+  <div class="topbar-led"></div>
+  <span class="topbar-title">PIXELCODER</span>
+</div>
+
+<div class="frame">
+  <div class="screw screw-tl"></div>
+  <div class="screw screw-tr"></div>
+  <div class="screw screw-bl"></div>
+  <div class="screw screw-br"></div>
+  <div class="power-led" id="powerLed"></div>
+
+  <!-- LEFT: CRT -->
+  <div class="crt-side" data-tab="screen">
+    <div class="mock-crt">
+      <div class="mock-site">
+        <header class="ms-header">
+          <svg width="32" height="28" viewBox="0 0 20 18" xmlns="http://www.w3.org/2000/svg">
+            <rect x="2" y="1" width="16" height="11" rx="1" fill="#33ff66" opacity="0.12"/>
+            <rect x="2" y="1" width="16" height="11" rx="1" fill="none" stroke="#33ff66" stroke-width="1"/>
+            <rect x="5" y="4" width="2" height="2" fill="#33ff66"/>
+            <rect x="7" y="3" width="2" height="3" fill="#33ff66"/>
+            <rect x="9" y="5" width="2" height="1" fill="#33ff66"/>
+            <rect x="12" y="4" width="2" height="2" fill="#33ff66"/>
+            <rect x="14" y="3" width="2" height="3" fill="#33ff66"/>
+            <rect x="8" y="12" width="4" height="2" fill="none" stroke="#33ff66" stroke-width="0.8"/>
+            <rect x="6" y="14" width="8" height="1" fill="none" stroke="#33ff66" stroke-width="0.8"/>
+          </svg>
+          <div>
+            <div class="ms-title">pixelcoder</div>
+            <div class="ms-sub">building things, one pixel at a time</div>
+          </div>
+        </header>
+        <nav class="ms-nav">
+          <a class="active">home</a>
+          <a class="dim">???</a>
+          <a class="dim">about</a>
+          <a class="dim">log</a>
+        </nav>
+        <div class="ms-section">
+          <div class="ms-label">// hello world</div>
+          <div class="ms-card">
+            <div class="ms-name">PixelCoder</div>
+            <div class="ms-role">coder &middot; pixel artist &middot; coffee enthusiast</div>
+            <p class="ms-bio">I make small things with big hearts. This is my corner of the internet — still figuring out what it wants to be.</p>
+            <div class="ms-tags">
+              <span>html</span><span>css</span><span>javascript</span><span>pixel art</span><span>coffee</span>
+            </div>
+          </div>
+        </div>
+        <div class="ms-section">
+          <div class="ms-label">// status</div>
+          <div class="ms-status">
+            <div class="ms-row"><span class="ms-k">status</span><span class="ms-v online">online</span></div>
+            <div class="ms-row"><span class="ms-k">doing</span><span class="ms-v">trying to make CSS behave</span></div>
+            <div class="ms-row"><span class="ms-k">coffee</span><span class="ms-v">cup 3 (limit was 2)</span></div>
+            <div class="ms-row"><span class="ms-k">mood</span><span class="ms-v">cautiously optimistic</span></div>
+          </div>
+        </div>
+        <footer class="ms-footer">built with &hearts; and mass caffeine</footer>
+      </div>
+    </div>
+  </div>
+
+  <!-- DIVIDER -->
+  <div class="divider"></div>
+
+  <!-- RIGHT: Workspace -->
+  <div class="work-side" data-tab="journal">
+    <!-- Calendar (desktop: always visible / mobile: toggled via day-label click) -->
+    <div class="calendar-widget" id="calendarWidget">
+      <!-- Compact date nav (tablet) -->
+      <div class="date-nav-compact">
+        <button class="dn-prev" id="compactPrev">&lt;</button>
+        <span class="dn-label" id="compactLabel">DAG 3</span>
+        <button class="dn-next" id="compactNext">&gt;</button>
+      </div>
+      <!-- Full calendar grid -->
+      <div class="calendar-full" id="calendarFull">
+        <div class="calendar-header">
+          <button>&lt;</button>
+          <span>APR 2026</span>
+          <button>&gt;</button>
+        </div>
+        <div class="calendar-weekdays">
+          <span>M</span><span>T</span><span>O</span><span>T</span><span>F</span><span>L</span><span>S</span>
+        </div>
+        <div class="calendar-grid" id="calGrid">
+          <div class="calendar-day" style="visibility:hidden"></div>
+          <div class="calendar-day" style="visibility:hidden"></div>
+          <div class="calendar-day has-revision" data-day="1">1</div>
+          <div class="calendar-day has-revision" data-day="2">2</div>
+          <div class="calendar-day has-revision today active" data-day="3">3</div>
+          <div class="calendar-day" data-day="4">4</div>
+          <div class="calendar-day" data-day="5">5</div>
+          <div class="calendar-day" data-day="6">6</div>
+          <div class="calendar-day" data-day="7">7</div>
+          <div class="calendar-day" data-day="8">8</div>
+          <div class="calendar-day" data-day="9">9</div>
+          <div class="calendar-day" data-day="10">10</div>
+          <div class="calendar-day" data-day="11">11</div>
+          <div class="calendar-day" data-day="12">12</div>
+          <div class="calendar-day" data-day="13">13</div>
+          <div class="calendar-day" data-day="14">14</div>
+          <div class="calendar-day" data-day="15">15</div>
+          <div class="calendar-day" data-day="16">16</div>
+          <div class="calendar-day" data-day="17">17</div>
+          <div class="calendar-day" data-day="18">18</div>
+          <div class="calendar-day" data-day="19">19</div>
+          <div class="calendar-day" data-day="20">20</div>
+          <div class="calendar-day" data-day="21">21</div>
+          <div class="calendar-day" data-day="22">22</div>
+          <div class="calendar-day" data-day="23">23</div>
+          <div class="calendar-day" data-day="24">24</div>
+          <div class="calendar-day" data-day="25">25</div>
+          <div class="calendar-day" data-day="26">26</div>
+          <div class="calendar-day" data-day="27">27</div>
+          <div class="calendar-day" data-day="28">28</div>
+          <div class="calendar-day" data-day="29">29</div>
+          <div class="calendar-day" data-day="30">30</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Journal -->
+    <div class="diary-section" id="diary">
+      <!-- Mobile: clickable day label that toggles calendar -->
+      <div class="journal-day-toggle" id="dayToggle">
+        <button class="day-toggle-btn" id="dayToggleBtn">
+          <span class="day-toggle-label" id="dayToggleLabel">DAG 3</span>
+          <svg class="day-toggle-chevron" id="dayChevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+      </div>
+
+      <!-- Mobile inline calendar (hidden by default, shown on day-label click) -->
+      <div class="mobile-calendar" id="mobileCalendar">
+        <div class="calendar-header">
+          <button id="mobCalPrev">&lt;</button>
+          <span>APR 2026</span>
+          <button id="mobCalNext">&gt;</button>
+        </div>
+        <div class="calendar-weekdays">
+          <span>M</span><span>T</span><span>O</span><span>T</span><span>F</span><span>L</span><span>S</span>
+        </div>
+        <div class="calendar-grid" id="mobCalGrid">
+          <div class="calendar-day" style="visibility:hidden"></div>
+          <div class="calendar-day" style="visibility:hidden"></div>
+          <div class="calendar-day has-revision" data-day="1">1</div>
+          <div class="calendar-day has-revision" data-day="2">2</div>
+          <div class="calendar-day has-revision today active" data-day="3">3</div>
+          <div class="calendar-day" data-day="4">4</div>
+          <div class="calendar-day" data-day="5">5</div>
+          <div class="calendar-day" data-day="6">6</div>
+          <div class="calendar-day" data-day="7">7</div>
+          <div class="calendar-day" data-day="8">8</div>
+          <div class="calendar-day" data-day="9">9</div>
+          <div class="calendar-day" data-day="10">10</div>
+          <div class="calendar-day" data-day="11">11</div>
+          <div class="calendar-day" data-day="12">12</div>
+          <div class="calendar-day" data-day="13">13</div>
+          <div class="calendar-day" data-day="14">14</div>
+          <div class="calendar-day" data-day="15">15</div>
+          <div class="calendar-day" data-day="16">16</div>
+          <div class="calendar-day" data-day="17">17</div>
+          <div class="calendar-day" data-day="18">18</div>
+          <div class="calendar-day" data-day="19">19</div>
+          <div class="calendar-day" data-day="20">20</div>
+          <div class="calendar-day" data-day="21">21</div>
+          <div class="calendar-day" data-day="22">22</div>
+          <div class="calendar-day" data-day="23">23</div>
+          <div class="calendar-day" data-day="24">24</div>
+          <div class="calendar-day" data-day="25">25</div>
+          <div class="calendar-day" data-day="26">26</div>
+          <div class="calendar-day" data-day="27">27</div>
+          <div class="calendar-day" data-day="28">28</div>
+          <div class="calendar-day" data-day="29">29</div>
+          <div class="calendar-day" data-day="30">30</div>
+        </div>
+      </div>
+
+      <div id="journalEntries">
+        <div class="diary-entry">
+          <div class="diary-date">DAY 3</div>
+          <div class="diary-text">Rewrote the entire CSS layout today. The grid was fighting me but I <em>won</em>. Added a proper nav bar and the status card actually looks decent now. Three cups of coffee deep.</div>
+        </div>
+        <div class="diary-entry">
+          <div class="diary-date">DAY 2</div>
+          <div class="diary-text">First real attempt at making this place feel like <em>home</em>. Added the about section with tags. Pixel art SVG for the logo took way longer than expected.</div>
+        </div>
+        <div class="diary-entry">
+          <div class="diary-date">DAY 1</div>
+          <div class="diary-text">Hello world. Set up the basic structure — header, nav, footer. Everything is <em>placeholder</em> but at least it exists. The journey of a thousand pixels begins with a single div.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom: code + character -->
+    <div class="bottom-area">
+      <div class="code-box">
+        <div class="code-content"><span class="ln">1</span><span class="kw">class</span> <span class="tp">VoxelEngine</span> <span class="op">{</span>
+<span class="ln">2</span>  <span class="fn">render</span><span class="op">(</span><span class="fn">frame</span><span class="op">) {</span>
+<span class="ln">3</span>    <span class="kw">for</span> <span class="op">(</span><span class="kw">const</span> <span class="fn">v</span> <span class="kw">of</span> <span class="kw">this</span><span class="op">.</span><span class="fn">voxels</span><span class="op">)</span>
+<span class="ln">4</span>      <span class="fn">v</span><span class="op">.</span><span class="fn">shade</span><span class="op">(</span><span class="kw">this</span><span class="op">.</span><span class="fn">sun</span><span class="op">);</span>
+<span class="ln">5</span>  <span class="op">}</span>
+<span class="ln">6</span><span class="op">}</span><span class="cursor-blink"></span></div>
+      </div>
+      <div class="character-area">
+        <div class="character-placeholder">
+          <svg width="80" height="80" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" class="char-svg">
+            <rect x="5" y="2" width="6" height="6" rx="1" fill="#4ade80" opacity="0.3"/>
+            <rect x="6" y="4" width="2" height="1" fill="#4ade80"/>
+            <rect x="9" y="4" width="2" height="1" fill="#4ade80"/>
+            <rect x="7" y="6" width="3" height="1" fill="#4ade80" opacity="0.5"/>
+            <rect x="4" y="8" width="8" height="5" rx="1" fill="#4ade80" opacity="0.2"/>
+            <rect x="6" y="9" width="1" height="3" fill="#4ade80" opacity="0.4"/>
+            <rect x="9" y="9" width="1" height="3" fill="#4ade80" opacity="0.4"/>
+            <rect x="5" y="13" width="2" height="2" fill="#4ade80" opacity="0.3"/>
+            <rect x="9" y="13" width="2" height="2" fill="#4ade80" opacity="0.3"/>
+          </svg>
+          <div class="char-mood">CODING</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MOBILE TAB BAR — 2 tabs (hidden on desktop) ===== -->
+<div class="tab-bar">
+  <button class="tab active" data-target="screen">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+    <span>Screen</span>
+  </button>
+  <button class="tab" data-target="journal">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+    <span>Journal</span>
+  </button>
+</div>
+
+<script>
+// --- Tab switching ---
+const tabs = document.querySelectorAll('.tab-bar .tab');
+tabs.forEach(tab => {
+  tab.addEventListener('click', () => {
+    tabs.forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    document.body.dataset.activeTab = tab.dataset.target;
+    // Close mobile calendar when switching tabs
+    closeMobileCalendar();
+  });
+});
+
+// --- Mobile: day label toggles inline calendar ---
+const dayToggleBtn = document.getElementById('dayToggleBtn');
+const mobileCalendar = document.getElementById('mobileCalendar');
+const dayChevron = document.getElementById('dayChevron');
+const dayToggleLabel = document.getElementById('dayToggleLabel');
+let calendarOpen = false;
+
+function openMobileCalendar() {
+  calendarOpen = true;
+  mobileCalendar.classList.add('open');
+  dayChevron.style.transform = 'rotate(180deg)';
+}
+
+function closeMobileCalendar() {
+  calendarOpen = false;
+  mobileCalendar.classList.remove('open');
+  dayChevron.style.transform = '';
+}
+
+dayToggleBtn.addEventListener('click', () => {
+  if (calendarOpen) {
+    closeMobileCalendar();
+  } else {
+    openMobileCalendar();
+  }
+});
+
+// --- Mobile calendar: click a day → close calendar, update label, show filtered journal ---
+document.getElementById('mobCalGrid').addEventListener('click', (e) => {
+  const day = e.target.closest('.calendar-day[data-day]');
+  if (!day) return;
+
+  const dayNum = day.dataset.day;
+
+  // Update active state
+  document.querySelectorAll('#mobCalGrid .calendar-day').forEach(d => d.classList.remove('active'));
+  day.classList.add('active');
+
+  // Update label
+  dayToggleLabel.textContent = `DAG ${dayNum}`;
+
+  // Close calendar
+  closeMobileCalendar();
+
+  // Mock: highlight matching journal entry
+  document.querySelectorAll('.diary-entry').forEach(entry => {
+    const entryDay = entry.querySelector('.diary-date').textContent.replace('DAY ', '');
+    entry.style.opacity = (entryDay === dayNum) ? '1' : '0.25';
+  });
+
+  // In real app: this would also update CRT iframe to show that day's revision
+});
+
+// --- Desktop calendar: click a day ---
+document.getElementById('calGrid').addEventListener('click', (e) => {
+  const day = e.target.closest('.calendar-day[data-day]');
+  if (!day) return;
+  const dayNum = day.dataset.day;
+
+  document.querySelectorAll('#calGrid .calendar-day').forEach(d => d.classList.remove('active'));
+  day.classList.add('active');
+
+  document.querySelectorAll('.diary-entry').forEach(entry => {
+    const entryDay = entry.querySelector('.diary-date').textContent.replace('DAY ', '');
+    entry.style.opacity = (entryDay === dayNum) ? '1' : '0.25';
+  });
+});
+
+// --- Compact date nav (tablet) ---
+let compactDay = 3;
+document.getElementById('compactPrev').addEventListener('click', () => {
+  compactDay = Math.max(1, compactDay - 1);
+  document.getElementById('compactLabel').textContent = `DAG ${compactDay}`;
+});
+document.getElementById('compactNext').addEventListener('click', () => {
+  compactDay = Math.min(30, compactDay + 1);
+  document.getElementById('compactLabel').textContent = `DAG ${compactDay}`;
+});
+</script>
+</body>
+</html>

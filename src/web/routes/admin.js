@@ -184,6 +184,38 @@ router.delete('/logs', requireSecret, async (req, res) => {
   }
 });
 
+router.delete('/revisions/:id', requireSecret, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (!id) return res.status(400).json({ success: false, error: 'Invalid revision ID' });
+
+    const deleted = await db('revisions').where('id', id).del();
+    if (!deleted) return res.status(404).json({ success: false, error: 'Revision not found' });
+
+    res.json({ success: true, deleted: id });
+  } catch (err) {
+    console.error('[api] DELETE /cycle/revisions/:id error:', err);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+router.put('/revisions/:id/journal', requireSecret, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { journal_entry } = req.body;
+    if (!id) return res.status(400).json({ success: false, error: 'Invalid revision ID' });
+    if (journal_entry == null) return res.status(400).json({ success: false, error: 'journal_entry required' });
+
+    const updated = await db('revisions').where('id', id).update({ journal_entry });
+    if (!updated) return res.status(404).json({ success: false, error: 'Revision not found' });
+
+    res.json({ success: true, id });
+  } catch (err) {
+    console.error('[api] PUT /cycle/revisions/:id/journal error:', err);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
 const EDITABLE_SETTINGS = ['cycle_interval_hours', 'start_date', 'cycle_logs_retain_days', 'daily_token_budget', 'claude_model'];
 
 router.put('/settings', requireSecret, async (req, res) => {
