@@ -4,16 +4,14 @@
 
 :root {
   --bg: #111A23;
+  --bg-surface: #0d1520;
   --crt-bg: #0a0f0a;
   --crt-green: #33ff66;
   --crt-green-dim: rgba(51, 255, 102, .12);
   --crt-green-mid: rgba(51, 255, 102, .5);
   --amber: #d4a054;
   --amber-dim: rgba(212, 160, 84, .4);
-  --shell: #c4b8a8;
-  --shell-light: #e0d5c7;
-  --shell-dark: #8a7e6e;
-  --bezel: #3a3a3a;
+  --border: rgba(255,255,255,.06);
   --pixel-font: 'Silkscreen', monospace;
   --terminal-font: 'VT323', monospace;
   --retro-font: 'Press Start 2P', monospace;
@@ -26,73 +24,60 @@ html, body {
   overflow: hidden;
 }
 
-/* === OUTER FRAME === */
-.frame {
-  height: calc(100vh - 32px);
-  margin: 16px;
-  border: 6px solid var(--shell);
-  border-top-width: 36px;
-  border-bottom-width: 14px;
-  border-radius: 14px;
+/* ============================================================
+   TOP BAR — always visible on all breakpoints
+   ============================================================ */
+.topbar {
   display: flex;
-  position: relative;
-  overflow: hidden;
-  box-shadow:
-    0 0 0 2px var(--shell-dark),
-    inset 0 0 60px rgba(0,0,0,.2),
-    0 8px 32px rgba(0,0,0,.5),
-    0 2px 8px rgba(0,0,0,.3);
+  align-items: center;
+  gap: 10px;
+  height: 44px;
+  padding: 0 20px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
 }
-
-/* Title in top bezel */
-.frame::before {
-  content: 'PIXELCODER';
-  position: absolute;
-  top: -28px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-family: var(--pixel-font);
-  font-size: 10px;
-  letter-spacing: 8px;
-  color: var(--shell-dark);
-  text-shadow: 0 1px 0 rgba(255,255,255,.4);
-  z-index: 10;
-}
-
-/* Screws */
-.screw {
-  position: absolute;
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: radial-gradient(circle, #b0a494, #8a7e6e);
-  box-shadow: 0 1px 2px rgba(0,0,0,.3) inset;
-  z-index: 10;
-}
-.screw-tl { top: -27px; left: 14px; }
-.screw-tr { top: -27px; right: 14px; }
-.screw-bl { bottom: -11px; left: 14px; width: 7px; height: 7px; }
-.screw-br { bottom: -11px; right: 14px; width: 7px; height: 7px; }
-
-/* Power LED */
-.power-led {
-  position: absolute;
-  top: -24px;
-  right: 48px;
-  width: 5px;
-  height: 5px;
+.topbar-led {
+  width: 6px; height: 6px;
   border-radius: 50%;
   background: #4ade80;
-  box-shadow: 0 0 6px #4ade80, 0 0 16px rgba(74,222,128,.2);
+  box-shadow: 0 0 6px #4ade80, 0 0 14px rgba(74,222,128,.15);
   animation: ledPulse 4s ease-in-out infinite;
-  z-index: 10;
 }
 @keyframes ledPulse {
   0%, 90%, 100% { opacity: 1; }
   95% { opacity: .4; }
 }
+.topbar-title {
+  font-family: var(--pixel-font);
+  font-size: 9px;
+  letter-spacing: 6px;
+  color: rgba(255,255,255,.35);
+}
 
-/* === LEFT SIDE — CRT MONITOR showing "his website" === */
+/* ============================================================
+   FRAME — clean container, no monitor chrome
+   ============================================================ */
+.frame {
+  position: fixed;
+  top: 44px; left: 0; right: 0; bottom: 0;
+  display: flex;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+/* Divider — subtle line */
+.divider {
+  width: 1px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+
+/* ============================================================
+   CRT SIDE (left panel)
+   ============================================================ */
 .crt-side {
   flex: 1;
   background: var(--crt-bg);
@@ -100,182 +85,134 @@ html, body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  border-radius: 8px;
+  margin: 8px;
+  margin-right: 4px;
 }
 
-
-/* Website content inside CRT */
-.website {
+/* CRT iframe (Inner World) */
+.crt-iframe {
   flex: 1;
-  padding: 40px 48px;
-  position: relative;
-  z-index: 3;
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
+  border: none;
+  width: 100%;
+  height: 100%;
+  background: var(--crt-bg);
 }
 
-/* --- Retro website elements --- */
-.site-header {
-  border-bottom: 2px solid var(--crt-green-dim);
-  padding-bottom: 16px;
-  margin-bottom: 28px;
-}
-
-.site-title {
-  font-family: var(--retro-font);
-  font-size: 20px;
-  color: var(--crt-green);
-  text-shadow: 0 0 20px rgba(51,255,102,.3);
-  margin-bottom: 6px;
-}
-
-.site-subtitle {
-  font-family: var(--terminal-font);
-  font-size: 16px;
-  color: var(--crt-green-mid);
-  letter-spacing: 1px;
-}
-
-.site-nav {
-  display: flex;
-  gap: 24px;
-  margin-bottom: 32px;
-}
-
-.site-nav a {
-  font-family: var(--terminal-font);
-  font-size: 18px;
-  color: var(--crt-green-mid);
-  text-decoration: none;
-  padding: 4px 0;
-  border-bottom: 1px solid transparent;
-  cursor: default;
-  transition: all .2s;
-}
-
-.site-nav a:hover {
-  color: var(--crt-green);
-  border-bottom-color: var(--crt-green-dim);
-  text-shadow: 0 0 8px rgba(51,255,102,.3);
-}
-
-.site-nav a.active {
-  color: var(--crt-green);
-  border-bottom-color: var(--crt-green);
-}
-
-.site-section {
-  margin-bottom: 28px;
-}
-
-.site-section h2 {
-  font-family: var(--retro-font);
-  font-size: 10px;
-  color: var(--crt-green);
-  letter-spacing: 2px;
-  margin-bottom: 12px;
-  text-shadow: 0 0 10px rgba(51,255,102,.2);
-}
-
-.site-section p {
-  font-family: var(--terminal-font);
-  font-size: 18px;
-  line-height: 1.6;
-  color: var(--crt-green-mid);
-}
-
-.site-section p strong {
-  color: var(--crt-green);
-  font-weight: normal;
-  text-shadow: 0 0 6px rgba(51,255,102,.15);
-}
-
-/* Retro card grid */
-.site-cards {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-top: 8px;
-}
-
-.site-card {
-  border: 1px solid var(--crt-green-dim);
-  padding: 14px;
-  border-radius: 2px;
-}
-
-.site-card h3 {
-  font-family: var(--retro-font);
-  font-size: 7px;
-  color: var(--crt-green);
-  letter-spacing: 1px;
-  margin-bottom: 6px;
-}
-
-.site-card p {
-  font-family: var(--terminal-font);
-  font-size: 15px;
-  color: rgba(51,255,102,.4);
-  line-height: 1.4;
-}
-
-/* Blinking cursor in hero */
-.blink {
-  animation: blink 1s step-end infinite;
-}
-@keyframes blink {
-  0%, 50% { opacity: 1; }
-  51%, 100% { opacity: 0; }
-}
-
-.site-footer {
-  margin-top: auto;
-  padding-top: 16px;
-  border-top: 1px solid var(--crt-green-dim);
-  font-family: var(--terminal-font);
-  font-size: 14px;
-  color: rgba(51,255,102,.2);
-}
-
-/* === DIVIDER === */
-.divider {
-  width: 4px;
-  background: linear-gradient(180deg, var(--shell), var(--shell-dark));
-  position: relative;
-  flex-shrink: 0;
-  box-shadow: -1px 0 4px rgba(0,0,0,.3), 1px 0 4px rgba(0,0,0,.3);
-}
-.divider::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: -2px;
-  transform: translateY(-50%);
-  width: 8px;
-  height: 40px;
-  background: var(--shell);
-  border-radius: 3px;
-  box-shadow: 0 1px 3px rgba(0,0,0,.3);
-}
-
-/* === RIGHT SIDE — WORKSPACE === */
+/* ============================================================
+   WORK SIDE (right panel)
+   ============================================================ */
 .work-side {
-  width: 420px;
+  width: 400px;
   flex-shrink: 0;
-  background: #111A23;
+  background: var(--bg);
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  margin: 8px;
+  margin-left: 4px;
 }
 
-/* Diary section */
+/* --- Calendar (desktop) --- */
+.calendar-widget {
+  padding: 10px 20px;
+  border-bottom: 1px solid rgba(212,160,84,.08);
+}
+
+/* Hidden-by-default mobile elements */
+.date-nav-compact { display: none; }
+.journal-day-toggle { display: none; }
+.mobile-calendar { display: none; }
+.tab-bar { display: none; }
+
+.calendar-full .calendar-header,
+.mobile-calendar .calendar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.calendar-full .calendar-header span,
+.mobile-calendar .calendar-header span {
+  font-family: var(--pixel-font);
+  font-size: 8px;
+  letter-spacing: 2px;
+  color: rgba(212,160,84,.55);
+}
+.calendar-full .calendar-header button,
+.mobile-calendar .calendar-header button {
+  background: none;
+  border: none;
+  font-family: var(--pixel-font);
+  font-size: 10px;
+  color: rgba(212,160,84,.5);
+  cursor: pointer;
+  padding: 2px 6px;
+}
+.calendar-full .calendar-header button:hover,
+.mobile-calendar .calendar-header button:hover { color: rgba(212,160,84,.8); }
+
+.calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+  margin-bottom: 3px;
+}
+.calendar-weekdays span {
+  font-family: var(--pixel-font);
+  font-size: 6px;
+  color: rgba(212,160,84,.4);
+  text-align: center;
+  letter-spacing: 1px;
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+}
+.calendar-day {
+  width: 100%;
+  aspect-ratio: 1;
+  background: rgba(255,255,255,.03);
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--pixel-font);
+  font-size: 7px;
+  color: rgba(255,255,255,.3);
+  cursor: pointer;
+  position: relative;
+}
+.calendar-day:hover { background: rgba(255,255,255,.06); }
+.calendar-day.has-revision {
+  background: rgba(212,160,84,.1);
+  border-color: rgba(212,160,84,.15);
+}
+.calendar-day.has-revision::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: var(--amber);
+  opacity: .5;
+}
+.calendar-day.active {
+  background: rgba(212,160,84,.2);
+  border-color: var(--amber-dim);
+}
+.calendar-day.today { border-color: var(--amber); }
+
+/* --- Journal --- */
 .diary-section {
   flex: 1;
-  padding: 24px 24px 12px;
+  padding: 20px 20px 12px;
   overflow-y: auto;
   min-height: 0;
 }
-
 .diary-section::before {
   content: '// journal.log';
   display: block;
@@ -290,8 +227,8 @@ html, body {
 
 .diary-entry {
   margin-bottom: 16px;
+  transition: opacity .3s;
 }
-
 .diary-date {
   font-family: var(--pixel-font);
   font-size: 8px;
@@ -300,34 +237,30 @@ html, body {
   opacity: .6;
   margin-bottom: 3px;
 }
-
 .diary-text {
   font-family: var(--terminal-font);
   font-size: 17px;
   line-height: 1.45;
   color: rgba(212,160,84,.75);
 }
-
 .diary-text em {
   color: rgba(212,160,84,.95);
   font-style: normal;
 }
 
-/* Bottom area: code + character */
+/* --- Bottom area: code + character --- */
 .bottom-area {
   display: flex;
   border-top: 1px solid rgba(255,255,255,.04);
   flex-shrink: 0;
 }
 
-/* Code box */
 .code-box {
   flex: 1;
   padding: 14px 16px;
   overflow-y: auto;
   min-width: 0;
 }
-
 .code-box::before {
   content: '// source.px';
   display: block;
@@ -337,7 +270,6 @@ html, body {
   color: rgba(74,222,128,.35);
   margin-bottom: 8px;
 }
-
 .code-content {
   font-family: var(--terminal-font);
   font-size: 15px;
@@ -346,7 +278,6 @@ html, body {
   white-space: pre-wrap;
   word-break: break-word;
 }
-
 .code-content .kw { color: #c792ea; }
 .code-content .fn { color: #82aaff; }
 .code-content .st { color: #c3e88d; }
@@ -358,25 +289,27 @@ html, body {
 
 .cursor-blink {
   display: inline-block;
-  width: 7px;
-  height: 13px;
+  width: 7px; height: 13px;
   background: #4ade80;
   animation: blink 1s step-end infinite;
   vertical-align: text-bottom;
 }
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
 
 /* Character area */
 .character-area {
-  width: 180px;
+  width: 170px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: center;
   padding: 8px;
   position: relative;
 }
-
 .character-area video {
   width: 170px;
   height: 170px;
@@ -410,111 +343,231 @@ html, body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.06); border-radius: 2px; }
 
-/* CRT iframe (Inner World) */
-.crt-iframe {
-  flex: 1;
-  border: none;
-  width: 100%;
-  height: 100%;
-  background: var(--crt-bg);
-}
-
-/* Pixel Calendar */
-.calendar-widget {
-  padding: 12px 24px;
-  border-bottom: 1px solid rgba(212,160,84,.08);
-}
-
-.calendar-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 3px;
-}
-
-.calendar-day {
-  width: 100%;
-  aspect-ratio: 1;
-  background: rgba(255,255,255,.03);
-  border: 1px solid rgba(255,255,255,.06);
-  border-radius: 2px;
-  cursor: pointer;
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--pixel-font);
-  font-size: 7px;
-  color: rgba(255,255,255,.3);
-}
-
-.calendar-day:hover {
-  background: rgba(255,255,255,.06);
-}
-
-.calendar-day.has-revision {
-  background: rgba(212,160,84,.1);
-  border-color: rgba(212,160,84,.15);
-}
-
-.calendar-day.has-revision::after {
-  content: '';
-  position: absolute;
-  bottom: 2px;
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: var(--amber);
-  opacity: .5;
-}
-
-.calendar-day.active {
-  background: rgba(212,160,84,.2);
-  border-color: var(--amber-dim);
-}
-
-.calendar-day.today {
-  border-color: var(--amber);
-}
-
-.calendar-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-}
-
-.calendar-header span {
-  font-family: var(--pixel-font);
-  font-size: 8px;
-  letter-spacing: 2px;
-  color: rgba(212,160,84,.55);
-}
-
-.calendar-header button {
+/* Shared date nav styling */
+.dn-prev, .dn-next {
   background: none;
-  border: none;
+  border: 1px solid rgba(212,160,84,.2);
+  border-radius: 3px;
   font-family: var(--pixel-font);
   font-size: 10px;
-  color: rgba(212,160,84,.5);
+  color: var(--amber);
+  opacity: .6;
   cursor: pointer;
-  padding: 2px 6px;
+  padding: 4px 10px;
+  transition: opacity .2s;
 }
-
-.calendar-header button:hover {
-  color: rgba(212,160,84,.8);
-}
-
-.calendar-weekdays {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 3px;
-  margin-bottom: 3px;
-}
-
-.calendar-weekdays span {
+.dn-prev:hover, .dn-next:hover { opacity: 1; }
+.dn-label {
   font-family: var(--pixel-font);
-  font-size: 6px;
-  color: rgba(212,160,84,.4);
+  font-size: 9px;
+  letter-spacing: 3px;
+  color: var(--amber);
+  opacity: .7;
+  min-width: 70px;
   text-align: center;
-  letter-spacing: 1px;
+}
+
+
+/* ============================================================
+   TABLET (768px – 1024px)
+   ============================================================ */
+@media (max-width: 1024px) {
+  .work-side { width: 300px; }
+
+  /* Compact date nav instead of full calendar */
+  .date-nav-compact {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding: 6px 0;
+  }
+  .calendar-full { display: none; }
+  .calendar-widget { padding: 8px 20px; }
+
+  /* Hide code box */
+  .code-box { display: none; }
+
+  /* Character takes full width */
+  .character-area { width: 100%; padding: 12px; }
+  .character-area video { width: 120px; height: 120px; }
+  .bottom-area { justify-content: center; }
+
+  .crt-side { margin: 6px; margin-right: 3px; }
+  .work-side { margin: 6px; margin-left: 3px; }
+}
+
+
+/* ============================================================
+   MOBILE (<768px)
+   ============================================================ */
+@media (max-width: 767px) {
+  html, body { overflow: hidden; }
+
+  .topbar { height: 40px; padding: 0 16px; }
+
+  /* Tab bar */
+  .tab-bar {
+    display: flex;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: 56px;
+    background: var(--bg-surface);
+    border-top: 1px solid var(--border);
+    z-index: 100;
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+  .tab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    background: none;
+    border: none;
+    color: rgba(255,255,255,.3);
+    cursor: pointer;
+    position: relative;
+    font-family: var(--pixel-font);
+    font-size: 7px;
+    letter-spacing: 1px;
+    padding: 6px 0;
+    transition: color .2s;
+  }
+  .tab:hover { color: rgba(255,255,255,.5); }
+  .tab.active { color: var(--amber); }
+  .tab.active::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 25%; right: 25%;
+    height: 2px;
+    background: var(--amber);
+    border-radius: 0 0 2px 2px;
+  }
+
+  /* Frame becomes full-bleed container */
+  .frame {
+    top: 40px;
+    bottom: 56px;
+  }
+  .divider { display: none; }
+
+  /* Panels fill the space */
+  .crt-side {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    margin: 0;
+    border-radius: 0;
+  }
+  .work-side {
+    width: 100%;
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    margin: 0;
+  }
+
+  /* Hide desktop calendar widget */
+  .calendar-widget { display: none; }
+  .date-nav-compact { display: none; }
+
+  /* --- Journal tab layout --- */
+  .diary-section {
+    flex: 1;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .diary-section::before {
+    padding: 12px 16px 8px;
+    margin-bottom: 0;
+  }
+
+  /* Day toggle (click to open calendar) */
+  .journal-day-toggle {
+    display: flex;
+    justify-content: center;
+    padding: 10px 16px 6px;
+    flex-shrink: 0;
+  }
+  .day-toggle-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(212,160,84,.06);
+    border: 1px solid rgba(212,160,84,.18);
+    border-radius: 6px;
+    padding: 8px 18px;
+    cursor: pointer;
+    transition: all .2s;
+  }
+  .day-toggle-btn:hover {
+    background: rgba(212,160,84,.12);
+    border-color: rgba(212,160,84,.3);
+  }
+  .day-toggle-label {
+    font-family: var(--pixel-font);
+    font-size: 9px;
+    letter-spacing: 3px;
+    color: var(--amber);
+  }
+  .day-toggle-chevron {
+    color: var(--amber);
+    opacity: .6;
+    transition: transform .25s ease;
+  }
+
+  /* Mobile inline calendar — hidden, shown on DAG click */
+  .mobile-calendar {
+    display: none;
+    padding: 8px 16px 12px;
+    border-bottom: 1px solid rgba(212,160,84,.1);
+  }
+  .mobile-calendar.open { display: block; }
+  .mobile-calendar .calendar-grid { gap: 2px; }
+  .mobile-calendar .calendar-day {
+    aspect-ratio: auto;
+    padding: 6px 0;
+    font-size: 8px;
+  }
+
+  /* Journal entries scroll area */
+  #journalEntries {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 16px 16px;
+  }
+
+  /* Character strip above journal, code-box hidden */
+  .bottom-area {
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    border-top: none;
+    border-bottom: 1px solid var(--border);
+    padding: 10px 16px;
+    flex-shrink: 0;
+    order: -1;
+  }
+  .code-box { display: none; }
+  .character-area {
+    width: auto;
+    padding: 0;
+    flex-shrink: 0;
+  }
+  .character-area video { width: 56px; height: 56px; }
+
+  /* Tab visibility */
+  .crt-side { display: flex; }
+  .work-side { display: none; }
+
+  body[data-active-tab="screen"] .crt-side { display: flex; }
+  body[data-active-tab="screen"] .work-side { display: none; }
+
+  body[data-active-tab="journal"] .crt-side { display: none; }
+  body[data-active-tab="journal"] .work-side { display: flex; }
 }

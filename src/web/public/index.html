@@ -9,15 +9,15 @@
 </head>
 <body>
 
-<div class="frame">
-  <div class="screw screw-tl"></div>
-  <div class="screw screw-tr"></div>
-  <div class="screw screw-bl"></div>
-  <div class="screw screw-br"></div>
-  <div class="power-led" id="powerLed"></div>
+<!-- Top bar — always visible -->
+<div class="topbar">
+  <div class="topbar-led" id="powerLed"></div>
+  <span class="topbar-title">PIXELCODER</span>
+</div>
 
+<div class="frame">
   <!-- LEFT: CRT showing the Inner World -->
-  <div class="crt-side">
+  <div class="crt-side" data-tab="screen">
     <iframe
       id="crtFrame"
       class="crt-iframe"
@@ -31,12 +31,26 @@
   <div class="divider"></div>
 
   <!-- RIGHT: Workspace -->
-  <div class="work-side">
-    <!-- Pixel Calendar -->
-    <div class="calendar-widget" id="calendarWidget"></div>
+  <div class="work-side" data-tab="journal">
+    <!-- Calendar (desktop: always visible, tablet: compact nav, mobile: hidden) -->
+    <div class="calendar-widget" id="calendarWidget">
+      <div class="date-nav-compact" id="dateNavCompact"></div>
+      <div class="calendar-full" id="calendarFull"></div>
+    </div>
 
     <!-- Journal -->
     <div class="diary-section" id="diary">
+      <!-- Mobile: clickable day label that toggles calendar -->
+      <div class="journal-day-toggle" id="dayToggle">
+        <button class="day-toggle-btn" id="dayToggleBtn">
+          <span class="day-toggle-label" id="dayToggleLabel">DAG 1</span>
+          <svg class="day-toggle-chevron" id="dayChevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+      </div>
+
+      <!-- Mobile inline calendar (hidden by default) -->
+      <div class="mobile-calendar" id="mobileCalendar"></div>
+
       <div id="journalEntries"></div>
     </div>
 
@@ -51,6 +65,18 @@
       </div>
     </div>
   </div>
+</div>
+
+<!-- Mobile tab bar (hidden on desktop/tablet) -->
+<div class="tab-bar" id="tabBar">
+  <button class="tab active" data-target="screen">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+    <span>Screen</span>
+  </button>
+  <button class="tab" data-target="journal">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+    <span>Journal</span>
+  </button>
 </div>
 
 <script type="module" src="/js/app.js"></script>
