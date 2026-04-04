@@ -481,6 +481,7 @@ html, body {
   .diary-section::before {
     padding: 12px 16px 8px;
     margin-bottom: 0;
+    flex-shrink: 0;
   }
 
   /* Day toggle (click to open calendar) */

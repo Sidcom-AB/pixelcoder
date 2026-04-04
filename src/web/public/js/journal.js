@@ -86,12 +86,21 @@ export function initJournal() {
   container = document.getElementById('journalEntries');
 
   const section = document.getElementById('diary');
-  section.addEventListener('scroll', () => {
-    const { scrollTop, scrollHeight, clientHeight } = section;
+
+  // Infinite scroll handler — works on whichever element is scrolling
+  function onScroll(e) {
+    const el = e.target;
+    const { scrollTop, scrollHeight, clientHeight } = el;
     if (scrollHeight - scrollTop - clientHeight < 50 && !loading && hasMore) {
       loadPage(currentPage + 1);
     }
-  });
+  }
+
+  // Desktop/tablet: #diary itself scrolls (overflow-y: auto)
+  section.addEventListener('scroll', onScroll);
+
+  // Mobile: #diary is overflow:hidden flex column, #journalEntries scrolls
+  container.addEventListener('scroll', onScroll);
 
   loadPage(1);
 }
