@@ -86,8 +86,7 @@ html, body {
   flex-direction: column;
   overflow: hidden;
   border-radius: 8px;
-  margin: 8px;
-  margin-right: 4px;
+  margin: 8px 4px 8px 8px;
 }
 
 /* CRT iframe (Inner World) */
@@ -109,8 +108,7 @@ html, body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  margin: 8px;
-  margin-left: 4px;
+  margin: 8px 8px 8px 4px;
 }
 
 /* --- Calendar (desktop) --- */
@@ -322,7 +320,7 @@ html, body {
   position: absolute;
   top: 8px;
   right: 8px;
-  z-index: 99999;
+  z-index: 10;
   font-family: var(--pixel-font);
   font-size: 7px;
   letter-spacing: 1px;
@@ -393,8 +391,8 @@ html, body {
   .character-area video { width: 120px; height: 120px; }
   .bottom-area { justify-content: center; }
 
-  .crt-side { margin: 6px; margin-right: 3px; }
-  .work-side { margin: 6px; margin-left: 3px; }
+  .crt-side { margin: 6px 3px 6px 6px; }
+  .work-side { margin: 6px 6px 6px 3px; }
 }
 
 
@@ -402,8 +400,6 @@ html, body {
    MOBILE (<768px)
    ============================================================ */
 @media (max-width: 767px) {
-  html, body { overflow: hidden; }
-
   .topbar { height: 40px; padding: 0 16px; }
 
   /* Tab bar */
