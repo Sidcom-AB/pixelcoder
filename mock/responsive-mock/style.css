@@ -4,15 +4,14 @@
 
 :root {
   --bg: #111A23;
+  --bg-surface: #0d1520;
   --crt-bg: #0a0f0a;
   --crt-green: #33ff66;
   --crt-green-dim: rgba(51, 255, 102, .12);
   --crt-green-mid: rgba(51, 255, 102, .5);
   --amber: #d4a054;
   --amber-dim: rgba(212, 160, 84, .4);
-  --shell: #c4b8a8;
-  --shell-light: #e0d5c7;
-  --shell-dark: #8a7e6e;
+  --border: rgba(255,255,255,.06);
   --pixel-font: 'Silkscreen', monospace;
   --terminal-font: 'VT323', monospace;
   --retro-font: 'Press Start 2P', monospace;
@@ -26,77 +25,63 @@ html, body {
 }
 
 /* ============================================================
-   HIDDEN BY DEFAULT (mobile-only elements)
+   TOP BAR — always visible on all breakpoints
    ============================================================ */
-.mobile-topbar { display: none; }
-.tab-bar { display: none; }
-.journal-day-toggle { display: none; }
-.mobile-calendar { display: none; }
-
-/* ============================================================
-   DESKTOP LAYOUT (>1024px) — original design
-   ============================================================ */
-.frame {
-  height: calc(100vh - 32px);
-  margin: 16px;
-  border: 6px solid var(--shell);
-  border-top-width: 36px;
-  border-bottom-width: 14px;
-  border-radius: 14px;
+.mobile-topbar {
   display: flex;
-  position: relative;
-  overflow: hidden;
-  box-shadow:
-    0 0 0 2px var(--shell-dark),
-    inset 0 0 60px rgba(0,0,0,.2),
-    0 8px 32px rgba(0,0,0,.5),
-    0 2px 8px rgba(0,0,0,.3);
+  align-items: center;
+  gap: 10px;
+  height: 44px;
+  padding: 0 20px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
 }
-
-.frame::before {
-  content: 'PIXELCODER';
-  position: absolute;
-  top: -28px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-family: var(--pixel-font);
-  font-size: 10px;
-  letter-spacing: 8px;
-  color: var(--shell-dark);
-  text-shadow: 0 1px 0 rgba(255,255,255,.4);
-  z-index: 10;
-}
-
-/* Screws */
-.screw {
-  position: absolute;
-  width: 9px; height: 9px;
-  border-radius: 50%;
-  background: radial-gradient(circle, #b0a494, #8a7e6e);
-  box-shadow: 0 1px 2px rgba(0,0,0,.3) inset;
-  z-index: 10;
-}
-.screw-tl { top: -27px; left: 14px; }
-.screw-tr { top: -27px; right: 14px; }
-.screw-bl { bottom: -11px; left: 14px; width: 7px; height: 7px; }
-.screw-br { bottom: -11px; right: 14px; width: 7px; height: 7px; }
-
-.power-led {
-  position: absolute;
-  top: -24px; right: 48px;
-  width: 5px; height: 5px;
+.topbar-led {
+  width: 6px; height: 6px;
   border-radius: 50%;
   background: #4ade80;
-  box-shadow: 0 0 6px #4ade80, 0 0 16px rgba(74,222,128,.2);
+  box-shadow: 0 0 6px #4ade80, 0 0 14px rgba(74,222,128,.15);
   animation: ledPulse 4s ease-in-out infinite;
-  z-index: 10;
 }
 @keyframes ledPulse {
   0%, 90%, 100% { opacity: 1; }
   95% { opacity: .4; }
 }
+.topbar-title {
+  font-family: var(--pixel-font);
+  font-size: 9px;
+  letter-spacing: 6px;
+  color: rgba(255,255,255,.35);
+}
 
-/* === CRT SIDE === */
+/* ============================================================
+   FRAME — clean container, no monitor chrome
+   ============================================================ */
+.frame {
+  position: fixed;
+  top: 44px; left: 0; right: 0; bottom: 0;
+  display: flex;
+  overflow: hidden;
+  background: var(--bg);
+}
+.frame::before { display: none; }
+.screw { display: none; }
+.power-led { display: none; }
+
+/* Divider — subtle line instead of physical handle */
+.divider {
+  width: 1px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+.divider::before { display: none; }
+
+/* ============================================================
+   CRT SIDE (left panel)
+   ============================================================ */
 .crt-side {
   flex: 1;
   background: var(--crt-bg);
@@ -104,6 +89,9 @@ html, body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  border-radius: 8px;
+  margin: 8px;
+  margin-right: 4px;
 }
 
 /* Mock CRT content */
@@ -179,11 +167,7 @@ html, body {
   color: var(--crt-green-mid);
   margin-bottom: 10px;
 }
-.ms-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
+.ms-tags { display: flex; flex-wrap: wrap; gap: 6px; }
 .ms-tags span {
   font-family: var(--terminal-font);
   font-size: 13px;
@@ -234,42 +218,30 @@ html, body {
   color: rgba(51,255,102,.2);
 }
 
-/* === DIVIDER === */
-.divider {
-  width: 4px;
-  background: linear-gradient(180deg, var(--shell), var(--shell-dark));
-  position: relative;
-  flex-shrink: 0;
-  box-shadow: -1px 0 4px rgba(0,0,0,.3), 1px 0 4px rgba(0,0,0,.3);
-}
-.divider::before {
-  content: '';
-  position: absolute;
-  top: 50%; left: -2px;
-  transform: translateY(-50%);
-  width: 8px; height: 40px;
-  background: var(--shell);
-  border-radius: 3px;
-  box-shadow: 0 1px 3px rgba(0,0,0,.3);
-}
-
-/* === WORK SIDE === */
+/* ============================================================
+   WORK SIDE (right panel)
+   ============================================================ */
 .work-side {
-  width: 420px;
+  width: 400px;
   flex-shrink: 0;
   background: var(--bg);
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  margin: 8px;
+  margin-left: 4px;
 }
 
 /* --- Calendar (desktop) --- */
 .calendar-widget {
-  padding: 12px 24px;
+  padding: 10px 20px;
   border-bottom: 1px solid rgba(212,160,84,.08);
 }
 
 .date-nav-compact { display: none; }
+.journal-day-toggle { display: none; }
+.mobile-calendar { display: none; }
+.tab-bar { display: none; }
 
 .calendar-full .calendar-header,
 .mobile-calendar .calendar-header {
@@ -322,7 +294,7 @@ html, body {
   aspect-ratio: 1;
   background: rgba(255,255,255,.03);
   border: 1px solid rgba(255,255,255,.06);
-  border-radius: 2px;
+  border-radius: 3px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -355,7 +327,7 @@ html, body {
 /* --- Journal --- */
 .diary-section {
   flex: 1;
-  padding: 24px 24px 12px;
+  padding: 20px 20px 12px;
   overflow-y: auto;
   min-height: 0;
 }
@@ -447,7 +419,7 @@ html, body {
 
 /* Character area */
 .character-area {
-  width: 180px;
+  width: 170px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
@@ -474,6 +446,30 @@ html, body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.06); border-radius: 2px; }
 
+/* Shared date nav styling */
+.dn-prev, .dn-next {
+  background: none;
+  border: 1px solid rgba(212,160,84,.2);
+  border-radius: 3px;
+  font-family: var(--pixel-font);
+  font-size: 10px;
+  color: var(--amber);
+  opacity: .6;
+  cursor: pointer;
+  padding: 4px 10px;
+  transition: opacity .2s;
+}
+.dn-prev:hover, .dn-next:hover { opacity: 1; }
+.dn-label {
+  font-family: var(--pixel-font);
+  font-size: 9px;
+  letter-spacing: 3px;
+  color: var(--amber);
+  opacity: .7;
+  min-width: 70px;
+  text-align: center;
+}
+
 
 /* ============================================================
    TABLET (768px – 1024px)
@@ -481,7 +477,7 @@ html, body {
 @media (max-width: 1024px) {
   .work-side { width: 300px; }
 
-  /* Show compact date nav, hide full calendar */
+  /* Compact date nav instead of full calendar */
   .date-nav-compact {
     display: flex;
     align-items: center;
@@ -490,22 +486,20 @@ html, body {
     padding: 6px 0;
   }
   .calendar-full { display: none; }
+  .calendar-widget { padding: 8px 20px; }
 
-  /* Hide code box on tablet */
+  /* Hide code box */
   .code-box { display: none; }
 
   /* Character takes full width */
-  .character-area {
-    width: 100%;
-    padding: 12px;
-  }
+  .character-area { width: 100%; padding: 12px; }
   .char-svg { width: 100px; height: 100px; }
   .bottom-area { justify-content: center; }
 
-  /* Calendar widget shrinks */
-  .calendar-widget { padding: 8px 24px; }
+  .mock-crt { padding: 24px 28px; }
 
-  .mock-crt { padding: 20px 24px; }
+  .crt-side { margin: 6px; margin-right: 3px; }
+  .work-side { margin: 6px; margin-left: 3px; }
 }
 
 
@@ -515,41 +509,16 @@ html, body {
 @media (max-width: 767px) {
   html, body { overflow: hidden; }
 
-  /* --- Top bar --- */
-  .mobile-topbar {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    height: 40px;
-    padding: 0 16px;
-    background: var(--bg);
-    border-bottom: 1px solid rgba(255,255,255,.06);
-    position: fixed;
-    top: 0; left: 0; right: 0;
-    z-index: 100;
-  }
-  .topbar-led {
-    width: 5px; height: 5px;
-    border-radius: 50%;
-    background: #4ade80;
-    box-shadow: 0 0 6px #4ade80, 0 0 12px rgba(74,222,128,.2);
-    animation: ledPulse 4s ease-in-out infinite;
-  }
-  .topbar-title {
-    font-family: var(--pixel-font);
-    font-size: 9px;
-    letter-spacing: 6px;
-    color: rgba(255,255,255,.4);
-  }
+  .mobile-topbar { height: 40px; padding: 0 16px; }
 
-  /* --- Tab bar (2 tabs) --- */
+  /* Tab bar */
   .tab-bar {
     display: flex;
     position: fixed;
     bottom: 0; left: 0; right: 0;
     height: 56px;
-    background: #0d1520;
-    border-top: 1px solid rgba(255,255,255,.08);
+    background: var(--bg-surface);
+    border-top: 1px solid var(--border);
     z-index: 100;
     padding-bottom: env(safe-area-inset-bottom, 0);
   }
@@ -583,38 +552,30 @@ html, body {
     border-radius: 0 0 2px 2px;
   }
 
-  /* --- Hide desktop frame chrome --- */
+  /* Frame becomes full-bleed container */
   .frame {
-    border: none;
-    border-radius: 0;
-    margin: 0;
-    height: auto;
-    box-shadow: none;
-    position: fixed;
-    top: 40px; left: 0; right: 0; bottom: 56px;
-    display: flex;
-    flex-direction: column;
+    top: 40px;
+    bottom: 56px;
   }
-  .frame::before { display: none; }
-  .screw { display: none; }
-  .power-led { display: none; }
   .divider { display: none; }
 
-  /* --- Panels fill the frame area --- */
+  /* Panels fill the space */
   .crt-side {
     position: absolute;
     inset: 0;
     z-index: 2;
+    margin: 0;
+    border-radius: 0;
   }
-
   .work-side {
     width: 100%;
     position: absolute;
     inset: 0;
     z-index: 1;
+    margin: 0;
   }
 
-  /* --- Hide desktop calendar widget --- */
+  /* Hide desktop calendar widget */
   .calendar-widget { display: none; }
   .date-nav-compact { display: none; }
 
@@ -631,7 +592,7 @@ html, body {
     margin-bottom: 0;
   }
 
-  /* Day toggle button (click to open calendar) */
+  /* Day toggle (click to open calendar) */
   .journal-day-toggle {
     display: flex;
     justify-content: center;
@@ -642,16 +603,16 @@ html, body {
     display: flex;
     align-items: center;
     gap: 8px;
-    background: rgba(212,160,84,.08);
-    border: 1px solid rgba(212,160,84,.2);
+    background: rgba(212,160,84,.06);
+    border: 1px solid rgba(212,160,84,.18);
     border-radius: 6px;
     padding: 8px 18px;
     cursor: pointer;
     transition: all .2s;
   }
   .day-toggle-btn:hover {
-    background: rgba(212,160,84,.14);
-    border-color: rgba(212,160,84,.35);
+    background: rgba(212,160,84,.12);
+    border-color: rgba(212,160,84,.3);
   }
   .day-toggle-label {
     font-family: var(--pixel-font);
@@ -665,15 +626,13 @@ html, body {
     transition: transform .25s ease;
   }
 
-  /* Mobile inline calendar — hidden by default, shown on DAG click */
+  /* Mobile inline calendar — hidden, shown on DAG click */
   .mobile-calendar {
     display: none;
     padding: 8px 16px 12px;
     border-bottom: 1px solid rgba(212,160,84,.1);
   }
-  .mobile-calendar.open {
-    display: block;
-  }
+  .mobile-calendar.open { display: block; }
   .mobile-calendar .calendar-grid { gap: 2px; }
   .mobile-calendar .calendar-day {
     aspect-ratio: auto;
@@ -688,13 +647,13 @@ html, body {
     padding: 8px 16px 16px;
   }
 
-  /* --- Character strip above journal, code-box hidden --- */
+  /* Character strip above journal, code-box hidden */
   .bottom-area {
     flex-direction: row;
     align-items: center;
     justify-content: center;
     border-top: none;
-    border-bottom: 1px solid rgba(255,255,255,.04);
+    border-bottom: 1px solid var(--border);
     padding: 10px 16px;
     flex-shrink: 0;
     order: -1;
@@ -713,8 +672,7 @@ html, body {
   .char-svg { width: 48px; height: 48px; }
   .char-mood { font-size: 6px; }
 
-  /* ---- Tab visibility ---- */
-  /* Default / screen tab */
+  /* Tab visibility */
   .crt-side { display: flex; }
   .work-side { display: none; }
 
@@ -725,28 +683,4 @@ html, body {
   body[data-active-tab="journal"] .work-side { display: flex; }
 
   .mock-crt { padding: 16px 20px; }
-}
-
-/* --- Shared date nav styling --- */
-.dn-prev, .dn-next {
-  background: none;
-  border: 1px solid rgba(212,160,84,.2);
-  border-radius: 3px;
-  font-family: var(--pixel-font);
-  font-size: 10px;
-  color: var(--amber);
-  opacity: .6;
-  cursor: pointer;
-  padding: 4px 10px;
-  transition: opacity .2s;
-}
-.dn-prev:hover, .dn-next:hover { opacity: 1; }
-.dn-label {
-  font-family: var(--pixel-font);
-  font-size: 9px;
-  letter-spacing: 3px;
-  color: var(--amber);
-  opacity: .7;
-  min-width: 70px;
-  text-align: center;
 }
