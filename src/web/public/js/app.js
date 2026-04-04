@@ -65,6 +65,27 @@ async function boot() {
   events.addEventListener('error', () => {
     console.warn('[sse] Connection lost, will auto-reconnect...');
   });
+
+  // --- Mobile tab switching ---
+  document.querySelectorAll('.tab-bar .tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab-bar .tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      document.body.dataset.activeTab = tab.dataset.target;
+    });
+  });
+
+  // --- Mobile: day label toggles inline calendar ---
+  const dayToggleBtn = document.getElementById('dayToggleBtn');
+  const mobileCalendar = document.getElementById('mobileCalendar');
+  const dayChevron = document.getElementById('dayChevron');
+
+  if (dayToggleBtn) {
+    dayToggleBtn.addEventListener('click', () => {
+      const isOpen = mobileCalendar.classList.toggle('open');
+      dayChevron.style.transform = isOpen ? 'rotate(180deg)' : '';
+    });
+  }
 }
 
 boot();

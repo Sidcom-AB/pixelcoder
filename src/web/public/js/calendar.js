@@ -2,7 +2,6 @@ import { filterByDay, clearFilter } from './journal.js';
 
 let calendarData = {};
 let currentMonth = new Date();
-let widget;
 let startDate;
 
 const WEEKDAYS = ['M', 'T', 'O', 'T', 'F', 'L', 'S'];
@@ -16,7 +15,7 @@ async function loadCalendarData() {
       data.data.forEach(d => {
         calendarData[d.day_number] = { count: d.count, moods: d.moods };
       });
-      renderCalendar();
+      renderAll();
     }
   } catch (e) {
     console.error('[calendar] Failed to load:', e);
@@ -29,7 +28,7 @@ function dayNumberFromDate(date) {
   return Math.floor(diff / (1000 * 60 * 60 * 24)) + 1;
 }
 
-function renderCalendar() {
+function buildCalendarGridHTML() {
   const year = currentMonth.getFullYear();
   const month = currentMonth.getMonth();
   const monthName = currentMonth.toLocaleString('sv-SE', { month: 'short', year: 'numeric' });
@@ -41,9 +40,9 @@ function renderCalendar() {
 
   let html = `
     <div class="calendar-header">
-      <button id="calPrev">&lt;</button>
+      <button class="cal-prev">&lt;</button>
       <span>${monthName.toUpperCase()}</span>
-      <button id="calNext">&gt;</button>
+      <button class="cal-next">&gt;</button>
     </div>
     <div class="calendar-weekdays">
       ${WEEKDAYS.map(d => `<span>${d}</span>`).join('')}
@@ -70,23 +69,28 @@ function renderCalendar() {
   }
 
   html += '</div>';
-  widget.innerHTML = html;
+  return html;
+}
 
-  widget.querySelector('#calPrev').addEventListener('click', () => {
+function attachCalendarHandlers(container) {
+  const year = currentMonth.getFullYear();
+  const month = currentMonth.getMonth();
+
+  container.querySelector('.cal-prev')?.addEventListener('click', () => {
     currentMonth = new Date(year, month - 1, 1);
-    renderCalendar();
+    renderAll();
   });
-  widget.querySelector('#calNext').addEventListener('click', () => {
+  container.querySelector('.cal-next')?.addEventListener('click', () => {
     currentMonth = new Date(year, month + 1, 1);
-    renderCalendar();
+    renderAll();
   });
 
-  widget.querySelectorAll('.calendar-day[data-day]').forEach(el => {
+  container.querySelectorAll('.calendar-day[data-day]').forEach(el => {
     el.addEventListener('click', () => {
       const dayNum = parseInt(el.dataset.day);
       if (dayNum < 1) return;
 
-      widget.querySelectorAll('.calendar-day.active').forEach(a => a.classList.remove('active'));
+      container.querySelectorAll('.calendar-day.active').forEach(a => a.classList.remove('active'));
 
       if (calendarData[dayNum]) {
         el.classList.add('active');
@@ -98,15 +102,89 @@ function renderCalendar() {
   });
 }
 
+function renderDesktopCalendar() {
+  const el = document.getElementById('calendarFull');
+  if (!el) return;
+  el.innerHTML = buildCalendarGridHTML();
+  attachCalendarHandlers(el);
+}
+
+function renderCompactNav() {
+  const nav = document.getElementById('dateNavCompact');
+  if (!nav) return;
+
+  const todayDayNum = dayNumberFromDate(new Date());
+  let currentDay = todayDayNum;
+
+  nav.innerHTML = `
+    <button class="dn-prev">&lt;</button>
+    <span class="dn-label">DAG ${currentDay}</span>
+    <button class="dn-next">&gt;</button>
+  `;
+
+  const label = nav.querySelector('.dn-label');
+
+  nav.querySelector('.dn-prev').addEventListener('click', () => {
+    currentDay = Math.max(1, currentDay - 1);
+    label.textContent = `DAG ${currentDay}`;
+    if (calendarData[currentDay]) {
+      filterByDay(currentDay);
+    }
+  });
+  nav.querySelector('.dn-next').addEventListener('click', () => {
+    currentDay = Math.min(todayDayNum, currentDay + 1);
+    label.textContent = `DAG ${currentDay}`;
+    if (calendarData[currentDay]) {
+      filterByDay(currentDay);
+    }
+  });
+}
+
+function renderMobileCalendar() {
+  const container = document.getElementById('mobileCalendar');
+  if (!container) return;
+
+  container.innerHTML = buildCalendarGridHTML();
+  attachCalendarHandlers(container);
+
+  // Additional mobile-specific behavior: close calendar on day click
+  container.querySelectorAll('.calendar-day[data-day]').forEach(el => {
+    el.addEventListener('click', () => {
+      const dayNum = parseInt(el.dataset.day);
+      if (dayNum < 1) return;
+
+      // Update day toggle label
+      const toggleLabel = document.getElementById('dayToggleLabel');
+      if (toggleLabel) toggleLabel.textContent = `DAG ${dayNum}`;
+
+      // Close mobile calendar
+      container.classList.remove('open');
+      const chevron = document.getElementById('dayChevron');
+      if (chevron) chevron.style.transform = '';
+    });
+  });
+}
+
+function renderAll() {
+  renderDesktopCalendar();
+  renderCompactNav();
+  renderMobileCalendar();
+}
+
 export function refreshCalendar() {
   loadCalendarData();
 }
 
 export function initCalendar(startDateStr) {
-  widget = document.getElementById('calendarWidget');
   // Parse as local date to avoid UTC offset issues
   const [y, m, d] = startDateStr.split('-').map(Number);
   startDate = new Date(y, m - 1, d);
   currentMonth = new Date();
+
+  // Set mobile day toggle label to current day
+  const todayNum = dayNumberFromDate(new Date());
+  const toggleLabel = document.getElementById('dayToggleLabel');
+  if (toggleLabel) toggleLabel.textContent = `DAG ${todayNum}`;
+
   loadCalendarData();
 }
