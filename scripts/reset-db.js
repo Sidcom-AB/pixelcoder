@@ -28,7 +28,7 @@ async function reset() {
     { key: 'cycle_interval_hours', value: '3' },
     { key: 'start_date', value: '2026-04-01' },
     { key: 'cycle_logs_retain_days', value: '90' },
-    { key: 'daily_token_budget', value: '120000' },
+    { key: 'daily_token_budget', value: '300000' },
   ]);
 
   // Reset auto-increment sequences

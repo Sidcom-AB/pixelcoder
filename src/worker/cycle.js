@@ -95,6 +95,20 @@ function parseResponse(text) {
   return JSON.parse(cleaned);
 }
 
+async function shouldSkipCycle(budget) {
+  if (budget.energyLevel !== 'exhausted') return false;
+
+  // Check if the last 2 revisions were already "rest" cycles (action_size: none)
+  // If so, skip — we don't need a third "I'm tired" post in a row
+  const recent = await db('revisions')
+    .select('action_size')
+    .orderBy('id', 'desc')
+    .limit(2);
+
+  const allResting = recent.length >= 2 && recent.every(r => r.action_size === 'none');
+  return allResting;
+}
+
 async function runCycle() {
   const dayNumber = await getDayNumber();
   const cycleNumber = await getCycleNumber(dayNumber);
@@ -107,6 +121,13 @@ async function runCycle() {
 
   console.log(`[cycle] Budget: ${budget.percent}% used (${budget.used}/${budget.budget} tokens), energy: ${budget.energyLevel}`);
   console.log(`[cycle] Workspace: ${fileManifest.length} files`);
+
+  // Skip cycle if exhausted and already posted multiple rest entries
+  if (await shouldSkipCycle(budget)) {
+    console.log(`[cycle] Skipping — exhausted and last 2 cycles were rest. Saving tokens.`);
+    await updateAppState(dayNumber);
+    return;
+  }
 
   // Create revision FIRST so we have an ID to log against immediately
   const revision = await db('revisions').insert({

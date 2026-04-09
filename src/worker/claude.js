@@ -2,6 +2,30 @@ const Anthropic = require('@anthropic-ai/sdk');
 
 const client = new Anthropic();
 
+/**
+ * Convert a system prompt string into cache-friendly blocks.
+ * The prompt uses a --- DYNAMIC --- marker to split static (cacheable) from dynamic content.
+ * Static part gets cache_control so it's reused across turns within the same cycle
+ * and across cycles (the soul files rarely change).
+ */
+function buildCacheableSystem(systemPrompt) {
+  const marker = '--- DYNAMIC ---';
+  const markerIndex = systemPrompt.indexOf(marker);
+
+  if (markerIndex === -1) {
+    // No marker — cache the whole thing
+    return [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }];
+  }
+
+  const staticPart = systemPrompt.substring(0, markerIndex).trimEnd();
+  const dynamicPart = systemPrompt.substring(markerIndex + marker.length).trimStart();
+
+  return [
+    { type: 'text', text: staticPart, cache_control: { type: 'ephemeral' } },
+    { type: 'text', text: dynamicPart },
+  ];
+}
+
 async function callClaude(systemPrompt, userMessage, options = {}) {
   const settings = require('../shared/settings');
   const model = options.model || await settings.get('claude_model');
@@ -51,6 +75,11 @@ async function callClaudeWithTools(systemPrompt, userMessage, tools, toolExecuto
   const maxTurns = options.maxTurns || 25;
   const onTurn = options.onTurn || (() => {});
 
+  // Split system prompt into static (cacheable) and dynamic parts
+  const systemBlocks = typeof systemPrompt === 'string'
+    ? buildCacheableSystem(systemPrompt)
+    : systemPrompt;
+
   const messages = [{ role: 'user', content: userMessage }];
   let totalTokens = 0;
 
@@ -60,23 +89,30 @@ async function callClaudeWithTools(systemPrompt, userMessage, tools, toolExecuto
     const response = await client.messages.create({
       model,
       max_tokens: maxTokens,
-      system: systemPrompt,
+      system: systemBlocks,
       tools,
       messages,
     });
 
     const durationMs = Date.now() - start;
     const tokens = response.usage.input_tokens + response.usage.output_tokens;
+    const cacheRead = response.usage.cache_read_input_tokens || 0;
+    const cacheCreation = response.usage.cache_creation_input_tokens || 0;
     totalTokens += tokens;
+
+    if (turn === 0 && (cacheRead > 0 || cacheCreation > 0)) {
+      console.log(`[claude] Cache: ${cacheRead} read, ${cacheCreation} creation tokens`);
+    }
 
     // Extract text content for logging
     const textBlocks = response.content.filter(b => b.type === 'text').map(b => b.text);
     const toolCalls = response.content.filter(b => b.type === 'tool_use');
 
     // Build prompt_sent for this turn
+    const systemText = typeof systemPrompt === 'string' ? systemPrompt : systemBlocks.map(b => b.text).join('\n');
     let promptSent;
     if (turn === 0) {
-      promptSent = `[system]\n${systemPrompt.substring(0, 2000)}\n\n[user]\n${userMessage}`;
+      promptSent = `[system]\n${systemText.substring(0, 2000)}\n\n[user]\n${userMessage}`;
     } else {
       const lastUserMsg = messages[messages.length - 1];
       if (lastUserMsg?.role === 'user' && Array.isArray(lastUserMsg.content)) {

@@ -62,7 +62,7 @@ These live in the `app_state` table and are editable via the admin panel (`/admi
 - `cycle_interval_hours` — Hours between cycles (default: 3)
 - `start_date` — Day 1 of the character's timeline (default: 2026-04-01)
 - `cycle_logs_retain_days` — Auto-cleanup for technical logs (default: 90)
-- `daily_token_budget` — Soft daily token limit (default: 120000). Character adjusts behavior based on remaining budget.
+- `daily_token_budget` — Soft daily token limit (default: 300000). Character adjusts behavior based on remaining budget.
 - `claude_model` — Claude model to use (default: claude-opus-4-6).
 
 Seeded by migration with defaults. Worker re-reads settings dynamically (no restart needed for interval changes).

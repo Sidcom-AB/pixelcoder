@@ -154,7 +154,7 @@ async function loadDashboard() {
       : '<tr><td colspan="6">No revisions yet</td></tr>';
 
     // Token budget
-    const budget = Number(getStateValue(stateRows, 'daily_token_budget')) || 120000;
+    const budget = Number(getStateValue(stateRows, 'daily_token_budget')) || 300000;
     const today = new Date().toISOString().slice(0, 10);
     const todayUsage = tokenData.daily?.find(d => d.date === today);
     const usedToday = todayUsage ? todayUsage.tokens : 0;

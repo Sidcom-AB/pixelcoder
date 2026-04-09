@@ -4,7 +4,7 @@ const DEFAULTS = {
   cycle_interval_hours: '3',
   start_date: '2026-04-01',
   cycle_logs_retain_days: '90',
-  daily_token_budget: '120000',
+  daily_token_budget: '300000',
   claude_model: 'claude-opus-4-6',
 };
 

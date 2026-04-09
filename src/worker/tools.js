@@ -1,5 +1,50 @@
 const db = require('../shared/db');
 
+const API_STORE_DOCS = `# Data Store API — /api/store
+
+Key-value store. Keys and values are ALWAYS strings.
+
+## Writing — always use POST
+
+POST /api/store — creates or updates (upsert):
+  await fetch('/api/store', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ key: 'visitor_count', value: '42' })
+  });
+
+## Reading
+
+GET /api/store/:key — read one key:
+  const res = await fetch('/api/store/visitor_count');
+  // { "success": true, "data": { "key": "visitor_count", "value": "42" } }
+  // data.value is ALWAYS a string.
+
+GET /api/store?prefix=gb: — list keys by prefix:
+  const res = await fetch('/api/store?prefix=gb:');
+  // { "success": true, "data": [{ "key": "gb:1001", "value": "{\\"name\\":\\"me\\"}" }] }
+  // Each value is a STRING — JSON.parse() it yourself.
+
+## Storing JSON
+
+Stringify when writing, parse when reading:
+  // Write
+  const value = JSON.stringify({ name: 'PixelCoder', msg: 'hello' });
+  await fetch('/api/store', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ key: 'gb:' + Date.now(), value })
+  });
+  // Read
+  const data = await res.json();
+  data.data.forEach(item => {
+    const entry = JSON.parse(item.value);
+  });
+
+## Limits
+- Max 500 entries per prefix, max 2KB per value, ~500 writes/visitor/hour.
+- Deletes require admin access.`;
+
 const toolDefinitions = [
   {
     name: 'list_files',
@@ -39,6 +84,11 @@ const toolDefinitions = [
       },
       required: ['filename'],
     },
+  },
+  {
+    name: 'get_api_docs',
+    description: 'Get full documentation for the /api/store key-value API, including examples for reading, writing, and storing JSON. Call this before using fetch to /api/store.',
+    input_schema: { type: 'object', properties: {}, required: [] },
   },
 ];
 
@@ -85,6 +135,9 @@ async function executeTool(toolName, input) {
       if (!deleted) return `Error: file "${input.filename}" not found.`;
       return `Deleted ${input.filename}`;
     }
+
+    case 'get_api_docs':
+      return API_STORE_DOCS;
 
     default:
       return `Error: unknown tool "${toolName}"`;

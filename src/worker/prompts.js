@@ -27,8 +27,12 @@ function buildPrompt(context) {
     .replace('{{energy_level}}', context.energyLevel || 'full')
     .replace('{{budget_percent}}', context.budgetPercent ?? 0);
 
-  // Append rules and examples
-  const fullSystem = [system, rules, examples].join('\n\n---\n\n');
+  // Static soul content (cacheable — rarely changes) goes before the marker.
+  // Dynamic per-cycle content (journal, energy, manifest) goes after.
+  // The system-prompt.md template already contains the dynamic parts,
+  // so we put rules+examples BEFORE and the rendered system template AFTER.
+  const staticPart = [rules, examples].join('\n\n---\n\n');
+  const fullSystem = staticPart + '\n\n--- DYNAMIC ---\n\n' + system;
 
   const user = `It's day ${context.dayNumber}. What are you doing today?`;
 
