@@ -33,6 +33,7 @@ router.get('/status', async (req, res) => {
     res.json({
       success: true,
       data: {
+        build_version: process.env.BUILD_VERSION || 'dev',
         current_day: parseInt(state.current_day || '0'),
         total_cycles: parseInt(state.total_cycles || '0'),
         start_date: state.start_date || '2026-04-01',

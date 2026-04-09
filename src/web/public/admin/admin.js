@@ -138,6 +138,7 @@ async function loadDashboard() {
       <div class="stat-card"><div class="stat-value">${escapeHtml(status.total_cycles)}</div><div class="stat-label">Total Cycles</div></div>
       <div class="stat-card"><div class="stat-value">${status.last_revision ? escapeHtml(status.last_revision.id) : '—'}</div><div class="stat-label">Latest Revision</div></div>
       <div class="stat-card"><div class="stat-value mono">${escapeHtml(model)}</div><div class="stat-label">Model</div></div>
+      <div class="stat-card"><div class="stat-value mono" style="font-size:0.85em;">${escapeHtml(status.build_version || 'dev')}</div><div class="stat-label">Build</div></div>
     `;
 
     // Latest revision

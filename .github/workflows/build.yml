@@ -32,6 +32,9 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Set build version
+        run: echo "BUILD_VERSION=${GITHUB_SHA::7} ($(date -u +%Y-%m-%d))" >> "$GITHUB_ENV"
+
       - name: Build and push web
         uses: docker/build-push-action@v6
         with:
@@ -41,6 +44,7 @@ jobs:
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-web:latest
             ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-web:${{ github.sha }}
+          build-args: BUILD_VERSION=${{ env.BUILD_VERSION }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -53,6 +57,7 @@ jobs:
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-worker:latest
             ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-worker:${{ github.sha }}
+          build-args: BUILD_VERSION=${{ env.BUILD_VERSION }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
